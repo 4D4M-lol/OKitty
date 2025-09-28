@@ -5,6 +5,18 @@
         <LangVersion>13</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Architecture>x64</Architecture>
     </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="SDL3-CS" Version="3.2.16.3" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <Content Include="Dlls/$(Architecture)/*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>%(Filename)%(Extension)</Link>
+        </Content>
+    </ItemGroup>
 
 </Project>
