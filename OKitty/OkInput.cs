@@ -323,11 +323,19 @@ public static class OkInput
         public void Initialize()
         {
             if (Initialized)
-                throw new ConstraintException("Keyboard can not be initialized twice.");
+            {
+                ODebugger.Throw(new ConstraintException("Keyboard can not be initialized twice.\n"));
+
+                return;
+            }
 
             if (!_window.Initialized)
-                throw new ApplicationException("Window must be initialized first.");
-            
+            {
+                ODebugger.Throw(new ApplicationException("Window must be initialized first.\n"));
+
+                return;
+            }
+
             SDL.EventFilter filter = Filter;
             (float x, float y) = (0, 0);
 
@@ -337,21 +345,22 @@ public static class OkInput
                 SDL.GetMouseState(out x, out y);
             }
             else
-                SDL.RunOnMainThread((IntPtr _) => 
+                SDL.RunOnMainThread((IntPtr _) =>
                 {
                     SDL.AddEventWatch(filter, IntPtr.Zero);
                     SDL.GetMouseState(out x, out y);
                 }, IntPtr.Zero, true);
 
             Initialized = true;
-            
+
             OnInitialization?.Invoke();
+            ODebugger.Inform($"Initialized keyboard for \"{_window.Name}\".\n");
         }
 
         public void Press(OKeyboardKey key, OModifierKey modifier = OModifierKey.None, bool release = true)
         {
             SDL.Event ev = new();
-            
+
             ev.Type = (uint)SDL.EventType.KeyDown;
             ev.Key.Key = (SDL.Keycode)key;
 
@@ -359,65 +368,67 @@ public static class OkInput
             {
                 if (modifier.HasFlag(OModifierKey.LeftShift))
                     ev.Key.Mod |= SDL.Keymod.LShift;
-                
+
                 if (modifier.HasFlag(OModifierKey.RightShift))
                     ev.Key.Mod |= SDL.Keymod.RShift;
-                
+
                 if (modifier.HasFlag(OModifierKey.Shift))
                     ev.Key.Mod |= SDL.Keymod.Shift;
-                
+
                 if (modifier.HasFlag(OModifierKey.Level5Shift))
                     ev.Key.Mod |= SDL.Keymod.Level5;
-                
+
                 if (modifier.HasFlag(OModifierKey.LeftControl))
                     ev.Key.Mod |= SDL.Keymod.LCtrl;
-                
+
                 if (modifier.HasFlag(OModifierKey.RightControl))
                     ev.Key.Mod |= SDL.Keymod.RCtrl;
-                
+
                 if (modifier.HasFlag(OModifierKey.Control))
                     ev.Key.Mod |= SDL.Keymod.Ctrl;
-                
+
                 if (modifier.HasFlag(OModifierKey.LeftAlt))
                     ev.Key.Mod |= SDL.Keymod.LAlt;
-                
+
                 if (modifier.HasFlag(OModifierKey.RightAlt))
                     ev.Key.Mod |= SDL.Keymod.RAlt;
-                
+
                 if (modifier.HasFlag(OModifierKey.Alt))
                     ev.Key.Mod |= SDL.Keymod.Alt;
-                
+
                 if (modifier.HasFlag(OModifierKey.LeftGui))
                     ev.Key.Mod |= SDL.Keymod.LGUI;
-                
+
                 if (modifier.HasFlag(OModifierKey.RightGui))
                     ev.Key.Mod |= SDL.Keymod.RGUI;
-                
+
                 if (modifier.HasFlag(OModifierKey.Gui))
                     ev.Key.Mod |= SDL.Keymod.GUI;
-                
+
                 if (modifier.HasFlag(OModifierKey.ScrollLock))
                     ev.Key.Mod |= SDL.Keymod.Scroll;
-                
+
                 if (modifier.HasFlag(OModifierKey.CapsLock))
                     ev.Key.Mod |= SDL.Keymod.Caps;
-                
+
                 if (modifier.HasFlag(OModifierKey.NumLock))
                     ev.Key.Mod |= SDL.Keymod.Num;
-                
+
                 if (modifier.HasFlag(OModifierKey.Mode))
                     ev.Key.Mod |= SDL.Keymod.Mode;
             }
 
             if (SDL.IsMainThread())
                 SDL.PushEvent(ref ev);
-            
+
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
                     SDL.PushEvent(ref ev);
                 }, IntPtr.Zero, false);
-            
+
+            ODebugger.Log($"Key press simulated for \"{_window.Name}\".\n");
+
             if (release)
                 Release(key, modifier);
         }
@@ -489,6 +500,8 @@ public static class OkInput
                 {
                     SDL.PushEvent(ref ev);
                 }, IntPtr.Zero, false);
+
+            ODebugger.Log($"Key release simulated for \"{_window.Name}\".\n");
         }
 
         public OModifierKey GetModifiers()
@@ -656,11 +669,19 @@ public static class OkInput
         public void Initialize()
         {
             if (Initialized)
-                throw new ConstraintException("Mouse can not be initialized twice.");
+            {
+                ODebugger.Throw(new ConstraintException("Mouse can not be initialized twice."));
+
+                return;
+            }
 
             if (!_window.Initialized)
-                throw new ApplicationException("Window must be initialized first.");
-            
+            {
+                ODebugger.Throw(new ApplicationException("Window must be initialized first."));
+
+                return;
+            }
+
             SDL.EventFilter filter = Filter;
             (float x, float y) = (0, 0);
 
@@ -670,7 +691,7 @@ public static class OkInput
                 SDL.GetMouseState(out x, out y);
             }
             else
-                SDL.RunOnMainThread((IntPtr _) => 
+                SDL.RunOnMainThread((IntPtr _) =>
                 {
                     SDL.AddEventWatch(filter, IntPtr.Zero);
                     SDL.GetMouseState(out x, out y);
@@ -678,8 +699,9 @@ public static class OkInput
 
             Position = new OVector2<float>(x, y);
             Initialized = true;
-            
+
             OnInitialization?.Invoke();
+            ODebugger.Inform($"Initialized mouse for \"{_window.Name}\".\n");
         }
 
         public void Click(OMouseButton button, OVector2<float>? position = null, byte clicks = 1)
@@ -688,16 +710,16 @@ public static class OkInput
                 position = Position;
             else
                 Move(position ?? Position);
-            
+
             SDL.Event ev = new SDL.Event();
-            
+
             ev.Type = (uint)SDL.EventType.MouseButtonDown;
             ev.Window.WindowID = SDL.GetWindowID(_window.WindowHandle);
             ev.Button.Button = (byte)(button + 1);
             ev.Button.X = position.Value.X;
             ev.Button.Y = position.Value.Y;
             ev.Button.Clicks = clicks;
-            
+
             if (SDL.IsMainThread())
                 SDL.PushEvent(ref ev);
             else
@@ -715,6 +737,8 @@ public static class OkInput
                 {
                     SDL.PushEvent(ref ev);
                 }, IntPtr.Zero, false);
+                
+            ODebugger.Log($"Mouse click simulated for \"{_window.Name}\".\n");
         }
 
         public void Move(OVector2<float> position, bool global = false)
@@ -732,7 +756,7 @@ public static class OkInput
                     SDL.WarpMouseGlobal(position.X, position.Y);
                 else
                     SDL.WarpMouseInWindow(_window.WindowHandle, position.X, position.Y);
-                
+
                 SDL.PushEvent(ref ev);
 
                 Position = position;
@@ -749,6 +773,8 @@ public static class OkInput
 
                     Position = position;
                 }, IntPtr.Zero, false);
+                
+            ODebugger.Log($"Mouse move simulated for \"{_window.Name}\".\n");
         }
 
         private bool Filter(IntPtr _, ref SDL.Event ev)

@@ -19,6 +19,32 @@ namespace OKitty;
 
 public static class OConfigs
 {
+    // Enums
+
+    [Flags]
+    public enum ODebugMode
+    {
+        None = 0,
+        CLI = 1 << 0,
+        GUI = 1 << 1,
+        All = CLI | GUI
+    }
+
+    [Flags]
+    public enum OLogLevel
+    {
+        None = 0,
+        Log = 1 << 0,
+        Inform = 1 << 1,
+        Warn = 1 << 2,
+        Error = 1 << 3,
+        All = Log | Inform | Warn | Error
+    }
+
+    // Configs
+
+    public static ODebugMode DebugMode { get; set; } = ODebugMode.All;
+    public static OLogLevel LogLevel { get; set; } = OLogLevel.All;
     public static bool Debug { get; set; } = true;
     public static bool Log { get; set; } = true;
 }

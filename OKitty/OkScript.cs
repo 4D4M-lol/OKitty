@@ -1,6 +1,7 @@
 ﻿// Imports
 
 using System.Collections.ObjectModel;
+using OKitty;
 using static OKitty.OkInput;
 using static OKitty.OkInstance;
 using static OKitty.OkMath;
@@ -62,6 +63,9 @@ public static class OkScript
             if (!OConfigs.Log)
                 return;
 
+            if (!OConfigs.LogLevel.HasFlag(OConfigs.OLogLevel.Log))
+                return;
+
             DateTime now = DateTime.Now;
             
             Console.ResetColor();
@@ -71,6 +75,9 @@ public static class OkScript
         public static void Inform(object value)
         {
             if (!OConfigs.Log)
+                return;
+
+            if (!OConfigs.LogLevel.HasFlag(OConfigs.OLogLevel.Inform))
                 return;
 
             DateTime now = DateTime.Now;
@@ -85,6 +92,9 @@ public static class OkScript
             if (!OConfigs.Log)
                 return;
 
+            if (!OConfigs.LogLevel.HasFlag(OConfigs.OLogLevel.Warn))
+                return;
+
             DateTime now = DateTime.Now;
 
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -97,6 +107,9 @@ public static class OkScript
             if (!OConfigs.Log)
                 return;
 
+            if (!OConfigs.LogLevel.HasFlag(OConfigs.OLogLevel.Error))
+                return;
+
             DateTime now = DateTime.Now;
 
             Console.ForegroundColor = ConsoleColor.Red;
@@ -107,7 +120,8 @@ public static class OkScript
         public static void Throw(Exception exception)
         {
             if (OConfigs.Debug)
-                Error(exception.Message);
+                if (OConfigs.DebugMode.HasFlag(OConfigs.ODebugMode.CLI))
+                    Error(exception.Message);
             else
                 throw exception;
         }
