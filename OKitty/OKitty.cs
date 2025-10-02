@@ -563,13 +563,14 @@ public class OWindow : IOPrototype
         _surface.H = _size.Y;
     
         (byte alpha, byte red, byte green, byte blue) = BackgroundColor.Argb;
+        float opacity = alpha / 255f;
+        red = (byte)(red * opacity);
+        green = (byte)(green * opacity);
+        blue = (byte)(blue * opacity);
         
-        SDL.SetRenderDrawColor(_renderer, 0, 0, 0, 0);
+        SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.None);
         SDL.RenderClear(_renderer);
-        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
-        SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
-        SDL.RenderFillRect(_renderer, _surface);
         SDL.RenderPresent(_renderer);
         _stopwatch.Stop();
         OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
