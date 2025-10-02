@@ -17,11 +17,11 @@ public static class OkInstance
     public interface IOPrototype : IDisposable
     {
         // Properties
-        
+
         public string Icon { get; }
         public string InstanceName { get; }
         public string Name { get; set; }
-        
+
         // Methods
 
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants);
@@ -32,14 +32,14 @@ public static class OkInstance
             return $"<{InstanceName} Name=\"{Name}\">";
         }
     }
-    
+
     public interface IOInstance : IOPrototype
     {
         // Properties
-        
+
         public IOInstance? Parent { get; set; }
         public HashSet<string> Tags { get; }
-        
+
         // Methods and Functions
 
         public ReadOnlyCollection<IOInstance> GetChildren();
@@ -48,7 +48,7 @@ public static class OkInstance
         {
             List<IOInstance> descendants = new List<IOInstance>();
             ReadOnlyCollection<IOInstance> children = GetChildren();
-            
+
             descendants.AddRange(children);
 
             foreach (IOInstance descendant in descendants)
@@ -96,7 +96,7 @@ public static class OkInstance
             foreach (IOInstance child in children)
                 if (child.Name == name)
                     return child;
-            
+
             return null;
         }
 
@@ -107,10 +107,10 @@ public static class OkInstance
             foreach (IOInstance child in children)
                 if (child.InstanceName == instance)
                     return child;
-            
+
             return null;
         }
-        
+
         public IOInstance? FindFirstDescendantNamed(string name)
         {
             ReadOnlyCollection<IOInstance> descendants = GetDescendants();
@@ -118,10 +118,10 @@ public static class OkInstance
             foreach (IOInstance descendant in descendants)
                 if (descendant.Name == name)
                     return descendant;
-            
+
             return null;
         }
-        
+
         public IOInstance? FindFirstDescendantWhichIsA(string instance)
         {
             ReadOnlyCollection<IOInstance> descendants = GetDescendants();
@@ -129,7 +129,7 @@ public static class OkInstance
             foreach (IOInstance descendant in descendants)
                 if (descendant.InstanceName == instance)
                     return descendant;
-            
+
             return null;
         }
 
@@ -146,22 +146,22 @@ public static class OkInstance
 
             return false;
         }
-        
+
         // Events
 
         public event OInstanceEvents.OnChildAdded OnChildAdded;
         public event OInstanceEvents.OnChildRemoved OnChildRemoved;
     }
-    
+
     // Structs
-    
+
     public struct OEdgeInfo
     {
         // Properties
-        
+
         public required OVector2<float> Start { get; init; }
         public required OVector2<float> End { get; init; }
-        
+
         // To String
 
         public override string ToString()
@@ -169,13 +169,13 @@ public static class OkInstance
             return $"{Start} - {End}";
         }
     }
-    
+
     public struct OFaceInfo
     {
         // Properties
-        
+
         public required List<OEdgeInfo> Edges { get; init; }
-        
+
         // To String
 
         public override string ToString()
@@ -183,16 +183,16 @@ public static class OkInstance
             return $"[{{string.Join(\", \", Edges)}}]";
         }
     }
-    
+
     // Classes
-    
+
     public class ORenderInfo
     {
         // Properties and Fields
 
         public List<OFaceInfo> Faces { get; private set; }
         public OFaceInfo? Mask { get; set; }
-        
+
         // Methods and Functions
 
         public ORenderInfo(List<OFaceInfo>? faces = null, OFaceInfo? mask = null)
@@ -200,222 +200,222 @@ public static class OkInstance
             Faces = faces ?? new List<OFaceInfo>();
             Mask = mask;
         }
-        
+
         // To String
 
         public override string ToString()
         {
             string faces = string.Join(", ", Faces);
             string mask = Mask is not null ? $"{Mask}" : "[null]";
-            
+
             return $"M{mask} F{faces}";
         }
     }
-    
-    public class OScenes : IOInstance
-    {
-        // Properties and Fields
-        
-        private OWindow _window;
-        private OScene _main;
-        private List<OScene> _scenes;
-    
-        IOInstance? IOInstance.Parent { get; set; } = null;
-    
-        public OWindow Window => _window;
-        public OScene Main => _main;
-        public string Icon => "󰉏";
-        public string InstanceName => "OScenes";
-        public string Name { get; set; } = "OScenes";
-        public HashSet<string> Tags { get; } = new HashSet<string>();
-    
-        // Events
-    
-        public event OInstanceEvents.OnChildAdded? OnChildAdded;
-        public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
-    
-        // Methods and Functions
-        
-        public OScenes(OWindow window, OScene main, string name = "OScenes")
-        {
-            if (main is null)
-            {
-                ODebugger.Throw(new ArgumentNullException(nameof(main)));
-                
-                return;
-            }
-            
-            _window = window;
-            _main = main;
-            _scenes = new List<OScene>();
-            Name = name;
-            
-            _scenes.Add(_main);
-            
-            _main.Parent = this;
-        }
-    
-        public ReadOnlyCollection<OScene> GetScenes()
-        {
-            List<OScene> scenes = new List<OScene>();
-            
-            scenes.Add(_main);
-            scenes.AddRange(_scenes);
-    
-            return new ReadOnlyCollection<OScene>(scenes);
-        }
-    
-        public ReadOnlyCollection<IOInstance> GetChildren()
-        {
-            List<IOInstance> children = new List<IOInstance>();
-            
-            children.Add(_main);
-            children.AddRange(_scenes);
-    
-            return new ReadOnlyCollection<IOInstance>(children);
-        }
-    
-        public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
-        {
-            return null;
-        }
-    
-        public void Dispose()
-        {
-            foreach (IOInstance scene in _scenes)
-                scene.Dispose();
-    
-            _scenes.Clear();
-        }
-    
-        public ORenderInfo? Render()
-        {
-            // TODO!
-    
-            return null;
-        }
-    
-        public void AddScene(OScene scene)
-        {
-            if (scene is null)
-            {
-                ODebugger.Throw(new ArgumentNullException(nameof(scene)));
-    
-                return;
-            }
-                
-            if (!_scenes.Contains(scene))
-            {
-                _scenes.Add(scene);
 
-                scene.Parent = this;
-
-                OnChildAdded?.Invoke(scene);
-            }
-        }
-    
-        public bool RemoveScene(OScene scene)
-        {
-            if (scene == _main)
-                return false;
-                
-            if (_scenes.Remove(scene))
-            {
-                scene.Parent = null;
-                
-                OnChildRemoved?.Invoke(scene);
-                
-                return true;
-            }
-            
-            return false;
-        }
-    
-        public bool ContainsScene(string name)
-        {
-            return _scenes.Select((OScene scene) => scene.Name).Contains(name);
-        }
-    
-        public bool ContainsScene(OScene scene)
-        {
-            return _scenes.Contains(scene);
-        }
-    
-        public override string ToString()
-        {
-            return $"<OScenes Window=\"{_window.Name}\" Name=\"{Name}\" Main=\"{Main.Name}\">";
-        }
-    }
-    
-    public class OScene : IOInstance
-    {
-        // Properties and Fields
-    
-        private IOInstance? _parent;
-        private List<IOInstance> _children;
-    
-        public string Icon => "󰈟";
-        public string InstanceName => "OScene";
-        public string Name { get; set; } = "OScene";
-        public HashSet<string> Tags { get; } = new HashSet<string>();
-        public bool Main { get; private set; } = false;
-
-        public IOInstance? Parent
-        {
-            get => _parent;
-            set
-            {
-                
-            }
-        }
-    
-        // Events
-        
-        public event OInstanceEvents.OnChildAdded? OnChildAdded;
-        public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
-    
-        // Methods and Functions
-    
-        public OScene(IOInstance? parent = null, string name = "OScene", bool main = false)
-        {
-            Name = name;
-            Main = main;
-            
-            if (main && parent is null)
-            {
-                ODebugger.Throw(new ArgumentException("Parent must be provided if this scene is a main scene."));
-    
-                return;
-            }
-    
-            if (main && !(parent is OScenes))
-            {
-                ODebugger.Throw(new ArgumentException("Parent must be of type OScenes if this scene is a main scene."));
-    
-                return;
-            }
-    
-            if (main && parent is OScenes scenes && scenes.Main != this)
-            {
-                ODebugger.Throw(new ArgumentException("This scene is not the main scene of the provided OScenes instance."));
-    
-                return;
-            }
-    
-            _parent = parent;
-            _children = new List<IOInstance>();
-        }
-
-        public ReadOnlyCollection<IOInstance> GetChildren()
-        {
-            return new ReadOnlyCollection<IOInstance>(_children);
-        }
-
-        public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
-        {
-            throw new NotImplementedException();
-        }
-        
-        Render
-    }
+//     public class OScenes : IOInstance
+//     {
+//         // Properties and Fields
+//         
+//         private OWindow _window;
+//         private OScene _main;
+//         private List<OScene> _scenes;
+//     
+//         IOInstance? IOInstance.Parent { get; set; } = null;
+//     
+//         public OWindow Window => _window;
+//         public OScene Main => _main;
+//         public string Icon => "󰉏";
+//         public string InstanceName => "OScenes";
+//         public string Name { get; set; } = "OScenes";
+//         public HashSet<string> Tags { get; } = new HashSet<string>();
+//     
+//         // Events
+//     
+//         public event OInstanceEvents.OnChildAdded? OnChildAdded;
+//         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
+//     
+//         // Methods and Functions
+//         
+//         public OScenes(OWindow window, OScene main, string name = "OScenes")
+//         {
+//             if (main is null)
+//             {
+//                 ODebugger.Throw(new ArgumentNullException(nameof(main)));
+//                 
+//                 return;
+//             }
+//             
+//             _window = window;
+//             _main = main;
+//             _scenes = new List<OScene>();
+//             Name = name;
+//             
+//             _scenes.Add(_main);
+//             
+//             _main.Parent = this;
+//         }
+//     
+//         public ReadOnlyCollection<OScene> GetScenes()
+//         {
+//             List<OScene> scenes = new List<OScene>();
+//             
+//             scenes.Add(_main);
+//             scenes.AddRange(_scenes);
+//     
+//             return new ReadOnlyCollection<OScene>(scenes);
+//         }
+//     
+//         public ReadOnlyCollection<IOInstance> GetChildren()
+//         {
+//             List<IOInstance> children = new List<IOInstance>();
+//             
+//             children.Add(_main);
+//             children.AddRange(_scenes);
+//     
+//             return new ReadOnlyCollection<IOInstance>(children);
+//         }
+//     
+//         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
+//         {
+//             return null;
+//         }
+//     
+//         public void Dispose()
+//         {
+//             foreach (IOInstance scene in _scenes)
+//                 scene.Dispose();
+//     
+//             _scenes.Clear();
+//         }
+//     
+//         public ORenderInfo? Render()
+//         {
+//             // TODO!
+//     
+//             return null;
+//         }
+//     
+//         public void AddScene(OScene scene)
+//         {
+//             if (scene is null)
+//             {
+//                 ODebugger.Throw(new ArgumentNullException(nameof(scene)));
+//     
+//                 return;
+//             }
+//                 
+//             if (!_scenes.Contains(scene))
+//             {
+//                 _scenes.Add(scene);
+//
+//                 scene.Parent = this;
+//
+//                 OnChildAdded?.Invoke(scene);
+//             }
+//         }
+//     
+//         public bool RemoveScene(OScene scene)
+//         {
+//             if (scene == _main)
+//                 return false;
+//                 
+//             if (_scenes.Remove(scene))
+//             {
+//                 scene.Parent = null;
+//                 
+//                 OnChildRemoved?.Invoke(scene);
+//                 
+//                 return true;
+//             }
+//             
+//             return false;
+//         }
+//     
+//         public bool ContainsScene(string name)
+//         {
+//             return _scenes.Select((OScene scene) => scene.Name).Contains(name);
+//         }
+//     
+//         public bool ContainsScene(OScene scene)
+//         {
+//             return _scenes.Contains(scene);
+//         }
+//     
+//         public override string ToString()
+//         {
+//             return $"<OScenes Window=\"{_window.Name}\" Name=\"{Name}\" Main=\"{Main.Name}\">";
+//         }
+//     }
+//     
+//     public class OScene : IOInstance
+//     {
+//         // Properties and Fields
+//     
+//         private IOInstance? _parent;
+//         private List<IOInstance> _children;
+//     
+//         public string Icon => "󰈟";
+//         public string InstanceName => "OScene";
+//         public string Name { get; set; } = "OScene";
+//         public HashSet<string> Tags { get; } = new HashSet<string>();
+//         public bool Main { get; private set; } = false;
+//
+//         public IOInstance? Parent
+//         {
+//             get => _parent;
+//             set
+//             {
+//                 
+//             }
+//         }
+//     
+//         // Events
+//         
+//         public event OInstanceEvents.OnChildAdded? OnChildAdded;
+//         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
+//     
+//         // Methods and Functions
+//     
+//         public OScene(IOInstance? parent = null, string name = "OScene", bool main = false)
+//         {
+//             Name = name;
+//             Main = main;
+//             
+//             if (main && parent is null)
+//             {
+//                 ODebugger.Throw(new ArgumentException("Parent must be provided if this scene is a main scene."));
+//     
+//                 return;
+//             }
+//     
+//             if (main && !(parent is OScenes))
+//             {
+//                 ODebugger.Throw(new ArgumentException("Parent must be of type OScenes if this scene is a main scene."));
+//     
+//                 return;
+//             }
+//     
+//             if (main && parent is OScenes scenes && scenes.Main != this)
+//             {
+//                 ODebugger.Throw(new ArgumentException("This scene is not the main scene of the provided OScenes instance."));
+//     
+//                 return;
+//             }
+//     
+//             _parent = parent;
+//             _children = new List<IOInstance>();
+//         }
+//
+//         public ReadOnlyCollection<IOInstance> GetChildren()
+//         {
+//             return new ReadOnlyCollection<IOInstance>(_children);
+//         }
+//
+//         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
+//         {
+//             throw new NotImplementedException();
+//         }
+//         
+//         Render
+//     }
 }

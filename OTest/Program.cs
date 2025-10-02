@@ -12,6 +12,8 @@ class Program
         };
         OWindow window = new OWindow(options);
         
+        window.BackgroundColor = OkStyling.OColor.FromArgb(125, 255, 255, 255);
+        
         window.Initialize();
         window.Run();
         window.Dispose();
