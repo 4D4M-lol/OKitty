@@ -563,13 +563,12 @@ public class OWindow : IOPrototype
         _surface.H = _size.Y;
     
         (byte alpha, byte red, byte green, byte blue) = BackgroundColor.Argb;
-        (byte red, byte green, byte blue) premul = ((byte)(red * (alpha / 255f)), (byte)(green * (alpha / 255f)), (byte)(green * (alpha / 255f)));
         
         SDL.SetRenderDrawColor(_renderer, 0, 0, 0, 0);
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.None);
         SDL.RenderClear(_renderer);
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
-        SDL.SetRenderDrawColor(_renderer, premul.red, premul.green, premul.blue, alpha);
+        SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
         SDL.RenderFillRect(_renderer, _surface);
         SDL.RenderPresent(_renderer);
         _stopwatch.Stop();
@@ -605,6 +604,7 @@ public class OWindow : IOPrototype
             case (uint)SDL.EventType.WindowExposed:
             case (uint)SDL.EventType.WindowResized:
             case (uint)SDL.EventType.WindowPixelSizeChanged:
+                Render();
                 SDL.GetWindowSize(_window, out int width, out int height);
 
                 if (width == _size.X && height == _size.Y)
@@ -613,10 +613,10 @@ public class OWindow : IOPrototype
                 _size = new OVector2<int>(width, height);
 
                 OnResize?.Invoke(_size);
-                Render();
 
                 break;
             case (uint)SDL.EventType.WindowMoved:
+                Render();
                 SDL.GetWindowPosition(_window, out int x, out int y);
 
                 if (x == _position.X && y == _position.Y)
@@ -625,7 +625,6 @@ public class OWindow : IOPrototype
                 _position = new OVector2<int>(x, y);
 
                 OnMove?.Invoke(_position);
-                Render();
 
                 break;
         }

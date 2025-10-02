@@ -85,6 +85,7 @@ public static class OkScript
             Console.ForegroundColor = ConsoleColor.Blue;
             
             Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.ResetColor();
         }
 
         public static void Warn(object value)
@@ -100,6 +101,7 @@ public static class OkScript
             Console.ForegroundColor = ConsoleColor.Yellow;
             
             Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.ResetColor();
         }
 
         public static void Error(object value)
@@ -115,6 +117,7 @@ public static class OkScript
             Console.ForegroundColor = ConsoleColor.Red;
             
             Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.ResetColor();
         }
 
         public static void Throw(Exception exception)
