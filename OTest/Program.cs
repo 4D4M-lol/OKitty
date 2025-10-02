@@ -1,5 +1,4 @@
 ﻿using OKitty;
-using static OKitty.OkInput;
 
 namespace OTest;
 

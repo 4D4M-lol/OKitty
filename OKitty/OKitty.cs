@@ -25,9 +25,9 @@ public static class OConfigs
     public enum ODebugMode
     {
         None = 0,
-        CLI = 1 << 0,
-        GUI = 1 << 1,
-        All = CLI | GUI
+        Cli = 1 << 0,
+        Gui = 1 << 1,
+        All = Cli | Gui
     }
 
     [Flags]
@@ -61,7 +61,7 @@ public record OWindowOptions
 {
     // Properties
     
-    public string Name { get; init; } = $"OKitty v{OInfos.Version} by {OInfos.Version}";
+    public string Name { get; init; } = $"OKitty v{OInfos.Version} by {OInfos.Author}";
     public OVector2<int> Size { get; init; } = new OVector2<int>(800, 600);
     public OVector2<int> Position { get; init; } = new OVector2<int>(-1, -1);
     public OWindow.OWindowCloseOperation CloseOperation { get; init; } = OWindow.OWindowCloseOperation.Close;
@@ -556,26 +556,23 @@ public class OWindow : IOPrototype
 
         if (!Visible && !RenderWhileHidden)
             return null;
-        
+    
         _stopwatch.Start();
 
         _surface.W = _size.X;
         _surface.H = _size.Y;
-        
-        SDL.SetRenderDrawColor(_renderer, 0, 0, 0, 0);
-        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.None);
-        SDL.RenderClear(_renderer);
-        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
-
+    
         (byte alpha, byte red, byte green, byte blue) = BackgroundColor.Argb;
-
+        
+        SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
+        SDL.RenderClear(_renderer);
         SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
         SDL.RenderFillRect(_renderer, _surface);
         SDL.RenderPresent(_renderer);
         _stopwatch.Stop();
         OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
         _stopwatch.Reset();
-        
+    
         return null;
     }
 

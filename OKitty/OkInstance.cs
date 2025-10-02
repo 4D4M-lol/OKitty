@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Dynamic;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 
@@ -42,7 +43,19 @@ public static class OkInstance
         // Methods and Functions
 
         public ReadOnlyCollection<IOInstance> GetChildren();
-        public ReadOnlyCollection<IOInstance> GetDescendants();
+
+        public ReadOnlyCollection<IOInstance> GetDescendants()
+        {
+            List<IOInstance> descendants = new List<IOInstance>();
+            ReadOnlyCollection<IOInstance> children = GetChildren();
+            
+            descendants.AddRange(children);
+
+            foreach (IOInstance descendant in descendants)
+                descendants.AddRange(descendant.GetDescendants());
+
+            return new ReadOnlyCollection<IOInstance>(descendants);
+        }
 
         public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, bool> selector)
         {
@@ -214,10 +227,10 @@ public static class OkInstance
         public string Icon => "󰉏";
         public string InstanceName => "OScenes";
         public string Name { get; set; } = "OScenes";
-        public HashSet<string> Tags { get; } = new();
+        public HashSet<string> Tags { get; } = new HashSet<string>();
     
         // Events
-
+    
         public event OInstanceEvents.OnChildAdded? OnChildAdded;
         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
     
@@ -225,8 +238,15 @@ public static class OkInstance
         
         public OScenes(OWindow window, OScene main, string name = "OScenes")
         {
+            if (main is null)
+            {
+                ODebugger.Throw(new ArgumentNullException(nameof(main)));
+                
+                return;
+            }
+            
             _window = window;
-            _main = main ?? ODebugger.Throw(new ArgumentNullException(nameof(main)));
+            _main = main;
             _scenes = new List<OScene>();
             Name = name;
             
@@ -237,29 +257,22 @@ public static class OkInstance
     
         public ReadOnlyCollection<OScene> GetScenes()
         {
+            List<OScene> scenes = new List<OScene>();
+            
+            scenes.Add(_main);
+            scenes.AddRange(_scenes);
+    
+            return new ReadOnlyCollection<OScene>(scenes);
+        }
+    
+        public ReadOnlyCollection<IOInstance> GetChildren()
+        {
             List<IOInstance> children = new List<IOInstance>();
             
             children.Add(_main);
             children.AddRange(_scenes);
     
             return new ReadOnlyCollection<IOInstance>(children);
-        }
-
-        public ReadOnlyCollection<IOInstance> GetChildren()
-        {
-            return GetScenes();
-        }
-    
-        public ReadOnlyCollection<IOInstance> GetDescendants()
-        {
-            List<IOInstance> descendants = new List<IOInstance>();
-            
-            descendants.AddRange(GetChildren());
-            
-            foreach (IOInstance descendant in descendants)
-                descendants.AddRange(descendant.GetDescendants());
-            
-            return new ReadOnlyCollection<IOInstance>(descendants);
         }
     
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
@@ -287,18 +300,18 @@ public static class OkInstance
             if (scene is null)
             {
                 ODebugger.Throw(new ArgumentNullException(nameof(scene)));
-
+    
                 return;
             }
                 
             if (!_scenes.Contains(scene))
-                {
-                    _scenes.Add(scene);
+            {
+                _scenes.Add(scene);
 
-                    scene.Parent = this;
+                scene.Parent = this;
 
-                    OnChildAdded?.Invoke(scene);
-                }
+                OnChildAdded?.Invoke(scene);
+            }
         }
     
         public bool RemoveScene(OScene scene)
@@ -339,46 +352,70 @@ public static class OkInstance
         // Properties and Fields
     
         private IOInstance? _parent;
+        private List<IOInstance> _children;
     
         public string Icon => "󰈟";
         public string InstanceName => "OScene";
         public string Name { get; set; } = "OScene";
+        public HashSet<string> Tags { get; } = new HashSet<string>();
         public bool Main { get; private set; } = false;
+
+        public IOInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                
+            }
+        }
     
         // Events
         
         public event OInstanceEvents.OnChildAdded? OnChildAdded;
         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
-
+    
         // Methods and Functions
-
+    
         public OScene(IOInstance? parent = null, string name = "OScene", bool main = false)
         {
             Name = name;
             Main = main;
-
+            
             if (main && parent is null)
             {
                 ODebugger.Throw(new ArgumentException("Parent must be provided if this scene is a main scene."));
-
+    
                 return;
             }
-
-            if (main && !(parent is OScenes scenes))
+    
+            if (main && !(parent is OScenes))
             {
                 ODebugger.Throw(new ArgumentException("Parent must be of type OScenes if this scene is a main scene."));
-
+    
                 return;
             }
-
-            if (main && scenes.Main != this)
+    
+            if (main && parent is OScenes scenes && scenes.Main != this)
             {
                 ODebugger.Throw(new ArgumentException("This scene is not the main scene of the provided OScenes instance."));
-
+    
                 return;
             }
-
+    
             _parent = parent;
+            _children = new List<IOInstance>();
         }
+
+        public ReadOnlyCollection<IOInstance> GetChildren()
+        {
+            return new ReadOnlyCollection<IOInstance>(_children);
+        }
+
+        public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
+        {
+            throw new NotImplementedException();
+        }
+        
+        Render
     }
 }

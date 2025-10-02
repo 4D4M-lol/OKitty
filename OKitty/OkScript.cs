@@ -120,7 +120,7 @@ public static class OkScript
         public static void Throw(Exception exception)
         {
             if (OConfigs.Debug)
-                if (OConfigs.DebugMode.HasFlag(OConfigs.ODebugMode.CLI))
+                if (OConfigs.DebugMode.HasFlag(OConfigs.ODebugMode.Cli))
                     Error(exception.Message);
             else
                 throw exception;
