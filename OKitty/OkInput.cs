@@ -300,9 +300,42 @@ public static class OkInput
             RightHyper = 0x20000007
         }
         
+        // Static Properties
+
+        public OKeyboard(OWindow window, SDL.EventFilter filter)
+        {
+            _window = window;
+        }
+
+        private static Dictionary<char, char> ShiftedSymbols { get; } = new()
+        {
+            ['1'] = '!',
+            ['2'] = '@',
+            ['3'] = '#',
+            ['4'] = '$',
+            ['5'] = '%',
+            ['6'] = '^',
+            ['7'] = '&',
+            ['8'] = '*',
+            ['9'] = '(',
+            ['0'] = ')',
+            ['-'] = '_',
+            ['='] = '+',
+            ['['] = '{',
+            [']'] = '}',
+            [';'] = ':',
+            ['\''] = '"',
+            [','] = '<',
+            ['.'] = '>',
+            ['/'] = '?',
+            ['\\'] = '|',
+            ['`'] = '~'
+        };
+        
         // Properties and Fields
 
         private OWindow _window;
+        private SDL.EventFilter _filter;
 
         public OWindow Window => _window;
         public bool Initialized { get; private set; } = false;
@@ -318,6 +351,7 @@ public static class OkInput
         public OKeyboard(OWindow window)
         {
             _window = window;
+            _filter = Filter;
         }
 
         public void Initialize()
@@ -336,18 +370,17 @@ public static class OkInput
                 return;
             }
 
-            SDL.EventFilter filter = Filter;
             (float x, float y) = (0, 0);
 
             if (SDL.IsMainThread())
             {
-                SDL.AddEventWatch(Filter, IntPtr.Zero);
+                SDL.AddEventWatch(_filter, IntPtr.Zero);
                 SDL.GetMouseState(out x, out y);
             }
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.AddEventWatch(filter, IntPtr.Zero);
+                    SDL.AddEventWatch(_filter, IntPtr.Zero);
                     SDL.GetMouseState(out x, out y);
                 }, IntPtr.Zero, true);
 
@@ -356,7 +389,7 @@ public static class OkInput
             OnInitialization?.Invoke();
             ODebugger.Inform($"Initialized keyboard for \"{_window.Name}\".\n");
         }
-
+        
         public void Press(OKeyboardKey key, OModifierKey modifier = OModifierKey.None, bool release = true)
         {
             SDL.Event ev = new();
@@ -596,6 +629,11 @@ public static class OkInput
             return !IsKeyPressed(key);
         }
 
+        public bool IsModifier(OKeyboardKey key)
+        {
+            return OModifierKey.TryParse(key.ToString(), false, out OModifierKey _);
+        }
+
         public string GetValue(OKeyboardKey key, OModifierKey modifier)
         {
             string name = SDL.GetKeyName((SDL.Keycode)key);
@@ -606,9 +644,16 @@ public static class OkInput
             if (name.Length == 1)
             {
                 char character = name[0];
-                bool upper = modifier.HasFlag(OModifierKey.Shift) ^ modifier.HasFlag(OModifierKey.CapsLock);
-                
-                return upper ? char.ToUpper(character).ToString() : char.ToLower(character).ToString();
+                bool shift = (modifier & OModifierKey.Shift) != 0;
+                bool caps = modifier.HasFlag(OModifierKey.CapsLock);
+
+                if (char.IsLetter(character))
+                    return ((shift ^ caps) ? char.ToUpper(character) : char.ToLower(character)).ToString();
+
+                if (shift && ShiftedSymbols.TryGetValue(character, out char shifted))
+                    return shifted.ToString();
+
+                return character.ToString();
             }
 
             return name;
@@ -664,6 +709,7 @@ public static class OkInput
         // Properties and Fields
 
         private OWindow _window;
+        private SDL.EventFilter _filter;
 
         public OWindow Window => _window;
         public bool Initialized { get; private set; } = false;
@@ -682,6 +728,7 @@ public static class OkInput
         public OMouse(OWindow window)
         {
             _window = window;
+            _filter = Filter;
         }
 
         public void Initialize()
@@ -700,18 +747,17 @@ public static class OkInput
                 return;
             }
 
-            SDL.EventFilter filter = Filter;
             (float x, float y) = (0, 0);
 
             if (SDL.IsMainThread())
             {
-                SDL.AddEventWatch(Filter, IntPtr.Zero);
+                SDL.AddEventWatch(_filter, IntPtr.Zero);
                 SDL.GetMouseState(out x, out y);
             }
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.AddEventWatch(filter, IntPtr.Zero);
+                    SDL.AddEventWatch(_filter, IntPtr.Zero);
                     SDL.GetMouseState(out x, out y);
                 }, IntPtr.Zero, true);
 

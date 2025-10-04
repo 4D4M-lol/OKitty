@@ -1,8 +1,6 @@
 ﻿// Imports
 
 using System.Collections.ObjectModel;
-using System.Data;
-using System.Dynamic;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 
@@ -147,6 +145,9 @@ public static class OkInstance
             return false;
         }
 
+        public void AddChild(IOInstance child);
+        public void RemoveChild(IOInstance child);
+
         // Events
 
         public event OInstanceEvents.OnChildAdded OnChildAdded;
@@ -212,210 +213,284 @@ public static class OkInstance
         }
     }
 
-//     public class OScenes : IOInstance
-//     {
-//         // Properties and Fields
-//         
-//         private OWindow _window;
-//         private OScene _main;
-//         private List<OScene> _scenes;
-//     
-//         IOInstance? IOInstance.Parent { get; set; } = null;
-//     
-//         public OWindow Window => _window;
-//         public OScene Main => _main;
-//         public string Icon => "󰉏";
-//         public string InstanceName => "OScenes";
-//         public string Name { get; set; } = "OScenes";
-//         public HashSet<string> Tags { get; } = new HashSet<string>();
-//     
-//         // Events
-//     
-//         public event OInstanceEvents.OnChildAdded? OnChildAdded;
-//         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
-//     
-//         // Methods and Functions
-//         
-//         public OScenes(OWindow window, OScene main, string name = "OScenes")
-//         {
-//             if (main is null)
-//             {
-//                 ODebugger.Throw(new ArgumentNullException(nameof(main)));
-//                 
-//                 return;
-//             }
-//             
-//             _window = window;
-//             _main = main;
-//             _scenes = new List<OScene>();
-//             Name = name;
-//             
-//             _scenes.Add(_main);
-//             
-//             _main.Parent = this;
-//         }
-//     
-//         public ReadOnlyCollection<OScene> GetScenes()
-//         {
-//             List<OScene> scenes = new List<OScene>();
-//             
-//             scenes.Add(_main);
-//             scenes.AddRange(_scenes);
-//     
-//             return new ReadOnlyCollection<OScene>(scenes);
-//         }
-//     
-//         public ReadOnlyCollection<IOInstance> GetChildren()
-//         {
-//             List<IOInstance> children = new List<IOInstance>();
-//             
-//             children.Add(_main);
-//             children.AddRange(_scenes);
-//     
-//             return new ReadOnlyCollection<IOInstance>(children);
-//         }
-//     
-//         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
-//         {
-//             return null;
-//         }
-//     
-//         public void Dispose()
-//         {
-//             foreach (IOInstance scene in _scenes)
-//                 scene.Dispose();
-//     
-//             _scenes.Clear();
-//         }
-//     
-//         public ORenderInfo? Render()
-//         {
-//             // TODO!
-//     
-//             return null;
-//         }
-//     
-//         public void AddScene(OScene scene)
-//         {
-//             if (scene is null)
-//             {
-//                 ODebugger.Throw(new ArgumentNullException(nameof(scene)));
-//     
-//                 return;
-//             }
-//                 
-//             if (!_scenes.Contains(scene))
-//             {
-//                 _scenes.Add(scene);
-//
-//                 scene.Parent = this;
-//
-//                 OnChildAdded?.Invoke(scene);
-//             }
-//         }
-//     
-//         public bool RemoveScene(OScene scene)
-//         {
-//             if (scene == _main)
-//                 return false;
-//                 
-//             if (_scenes.Remove(scene))
-//             {
-//                 scene.Parent = null;
-//                 
-//                 OnChildRemoved?.Invoke(scene);
-//                 
-//                 return true;
-//             }
-//             
-//             return false;
-//         }
-//     
-//         public bool ContainsScene(string name)
-//         {
-//             return _scenes.Select((OScene scene) => scene.Name).Contains(name);
-//         }
-//     
-//         public bool ContainsScene(OScene scene)
-//         {
-//             return _scenes.Contains(scene);
-//         }
-//     
-//         public override string ToString()
-//         {
-//             return $"<OScenes Window=\"{_window.Name}\" Name=\"{Name}\" Main=\"{Main.Name}\">";
-//         }
-//     }
-//     
-//     public class OScene : IOInstance
-//     {
-//         // Properties and Fields
-//     
-//         private IOInstance? _parent;
-//         private List<IOInstance> _children;
-//     
-//         public string Icon => "󰈟";
-//         public string InstanceName => "OScene";
-//         public string Name { get; set; } = "OScene";
-//         public HashSet<string> Tags { get; } = new HashSet<string>();
-//         public bool Main { get; private set; } = false;
-//
-//         public IOInstance? Parent
-//         {
-//             get => _parent;
-//             set
-//             {
-//                 
-//             }
-//         }
-//     
-//         // Events
-//         
-//         public event OInstanceEvents.OnChildAdded? OnChildAdded;
-//         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
-//     
-//         // Methods and Functions
-//     
-//         public OScene(IOInstance? parent = null, string name = "OScene", bool main = false)
-//         {
-//             Name = name;
-//             Main = main;
-//             
-//             if (main && parent is null)
-//             {
-//                 ODebugger.Throw(new ArgumentException("Parent must be provided if this scene is a main scene."));
-//     
-//                 return;
-//             }
-//     
-//             if (main && !(parent is OScenes))
-//             {
-//                 ODebugger.Throw(new ArgumentException("Parent must be of type OScenes if this scene is a main scene."));
-//     
-//                 return;
-//             }
-//     
-//             if (main && parent is OScenes scenes && scenes.Main != this)
-//             {
-//                 ODebugger.Throw(new ArgumentException("This scene is not the main scene of the provided OScenes instance."));
-//     
-//                 return;
-//             }
-//     
-//             _parent = parent;
-//             _children = new List<IOInstance>();
-//         }
-//
-//         public ReadOnlyCollection<IOInstance> GetChildren()
-//         {
-//             return new ReadOnlyCollection<IOInstance>(_children);
-//         }
-//
-//         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
-//         {
-//             throw new NotImplementedException();
-//         }
-//         
-//         Render
-//     }
+    public class OScenes : IOInstance
+    {
+        // Properties and Fields
+        
+        private OWindow _window;
+        private OScene _main;
+        private List<OScene> _scenes;
+        private int _active;
+    
+        IOInstance? IOInstance.Parent { get; set; } = null;
+    
+        public OWindow Window => _window;
+        public OScene Main => _main;
+        public string Icon => "󰉏";
+        public string InstanceName => "OScenes";
+        public string Name { get; set; } = "OScenes";
+        public HashSet<string> Tags { get; } = new HashSet<string>();
+
+        public int Active
+        {
+            get => _active;
+            set
+            {
+                if (value < 0 || value > _scenes.Count)
+                {
+                    ODebugger.Throw(new IndexOutOfRangeException($"\"Active\" can only be between 0 to {_scenes.Count}."));
+
+                    return;
+                }
+
+                _active = value;
+            }
+        }
+    
+        // Events
+    
+        public event OInstanceEvents.OnChildAdded? OnChildAdded;
+        public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
+    
+        // Methods and Functions
+        
+        public OScenes(OWindow window, OScene main, string name = "OScenes")
+        {
+            _window = window;
+            _main = main;
+            _scenes = new List<OScene>();
+            _active = 0;
+            Name = name;
+            
+            _scenes.Add(_main);
+            
+            _main.Parent = this;
+        }
+    
+        public ReadOnlyCollection<OScene> GetScenes()
+        {
+            List<OScene> scenes = new List<OScene>();
+            
+            scenes.Add(_main);
+            scenes.AddRange(_scenes);
+    
+            return new ReadOnlyCollection<OScene>(scenes);
+        }
+    
+        public ReadOnlyCollection<IOInstance> GetChildren()
+        {
+            List<IOInstance> children = new List<IOInstance>();
+            
+            children.Add(_main);
+            children.AddRange(_scenes);
+    
+            return new ReadOnlyCollection<IOInstance>(children);
+        }
+    
+        public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
+        {
+            return null;
+        }
+    
+        public void Dispose()
+        {
+            foreach (IOInstance scene in _scenes)
+                scene.Dispose();
+    
+            _scenes.Clear();
+        }
+    
+        public ORenderInfo? Render()
+        {
+            // TODO!
+    
+            return null;
+        }
+    
+        public void AddChild(IOInstance child)
+        {
+            if (!(child is OScene scene))
+            {
+                ODebugger.Throw(new ArgumentException("Only an OScene can be parented to an OScenes."));
+                
+                return;
+            }
+                
+            if (_scenes.Contains(scene))
+                return;
+            
+            _scenes.Add(scene);
+
+            if (scene.Parent != this)
+                scene.Parent = this;
+
+            OnChildAdded?.Invoke(scene);
+        }
+    
+        public void RemoveChild(IOInstance child)
+        {
+            if (!(child is OScene scene))
+            {
+                ODebugger.Throw(new ArgumentException("Only an OScene can be parented to an OScenes."));
+                
+                return;
+            }
+            
+            if (scene == _main)
+                return;
+
+            if (!_scenes.Remove(scene))
+                return;
+            
+            if (scene.Parent == this)
+                scene.Parent = null;
+            
+            OnChildRemoved?.Invoke(scene);
+        }
+    
+        public override string ToString()
+        {
+            return $"<OScenes Window=\"{_window.Name}\" Name=\"{Name}\" Main=\"{Main.Name}\">";
+        }
+    }
+    
+    public class OScene : IOInstance
+    {
+        // Properties and Fields
+    
+        private IOInstance? _parent;
+        private List<IOInstance> _children;
+    
+        public string Icon => "󰈟";
+        public string InstanceName => "OScene";
+        public string Name { get; set; } = "OScene";
+        public HashSet<string> Tags { get; } = new HashSet<string>();
+        public bool Main { get; private set; } = false;
+
+        public IOInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value)
+                    return;
+
+                if (Main)
+                {
+                    if (!(_parent is null))
+                    {
+                        ODebugger.Throw(new ArgumentException("The parent of an OScene can not be changed."));
+
+                        return;
+                    }
+
+                    if (!(value is OScenes scenes))
+                    {
+                        ODebugger.Throw(new ArgumentException("Parent must be an OScenes if this was a main scene."));
+
+                        return;
+                    }
+
+                    if (scenes.Main != this)
+                    {
+                        ODebugger.Throw(new ArgumentException("The main scene of the provided OScenes is a different scene."));
+
+                        return;
+                    }
+
+                    _parent = value;
+
+                    return;
+                }
+
+                if (_parent is IOInstance)
+                    _parent.RemoveChild(this);
+
+                _parent = value;
+
+                if (value is IOInstance)
+                    _parent.AddChild(this);
+            }
+        }
+    
+        // Events
+        
+        public event OInstanceEvents.OnChildAdded? OnChildAdded;
+        public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
+    
+        // Methods and Functions
+    
+        public OScene(IOInstance? parent = null, string name = "OScene", bool main = false)
+        {
+            Name = name;
+            Main = main;
+    
+            if (main && !(parent is null))
+            {
+                ODebugger.Throw(new ArgumentException("Parent must be null if this scene is a main scene."));
+    
+                return;
+            }
+    
+            _parent = parent;
+            _children = new List<IOInstance>();
+            
+            if (parent is IOInstance)
+                parent.AddChild(this);
+        }
+
+        public ReadOnlyCollection<IOInstance> GetChildren()
+        {
+            return new ReadOnlyCollection<IOInstance>(_children);
+        }
+
+        public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            foreach (IOInstance child in _children)
+                child.Dispose();
+
+            _children.Clear();
+        }
+
+        public void AddChild(IOInstance child)
+        {
+            if (_children.Contains(child))
+                return;
+            
+            _children.Add(child);
+
+            if (child.Parent != this)
+                child.Parent = this;
+
+            OnChildAdded?.Invoke(child);
+        }
+    
+        public void RemoveChild(IOInstance child)
+        {
+            if (!_children.Remove(child))
+                return;
+            
+            if (child.Parent == this)
+                child.Parent = null;
+            
+            OnChildRemoved?.Invoke(child);
+        }
+
+        public ORenderInfo? Render()
+        {
+            // TODO!
+
+            return null;
+        }
+
+        public override string ToString()
+        {
+            return $"<OScene Name=\"{Name}\" Main={Main}>";
+        }
+    }
 }
