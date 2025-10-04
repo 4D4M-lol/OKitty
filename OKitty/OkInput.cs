@@ -313,7 +313,7 @@ public static class OkInput
         public event OKeyboardEvents.OnKeyDown? OnKeyDown;
         public event OKeyboardEvents.OnKeyUp? OnKeyUp;
         
-        // Methods and Functions
+        // Methods
 
         public OKeyboard(OWindow window)
         {
@@ -594,6 +594,24 @@ public static class OkInput
         public bool IsKeyReleased(OKeyboardKey key)
         {
             return !IsKeyPressed(key);
+        }
+
+        public string GetValue(OKeyboardKey key, OModifierKey modifier)
+        {
+            string name = SDL.GetKeyName((SDL.Keycode)key);
+            
+            if (string.IsNullOrEmpty(name))
+                return string.Empty;
+
+            if (name.Length == 1)
+            {
+                char character = name[0];
+                bool upper = modifier.HasFlag(OModifierKey.Shift) ^ modifier.HasFlag(OModifierKey.CapsLock);
+                
+                return upper ? char.ToUpper(character).ToString() : char.ToLower(character).ToString();
+            }
+
+            return name;
         }
 
         private bool Filter(IntPtr _, ref SDL.Event ev)

@@ -1,4 +1,10 @@
 ﻿using OKitty;
+using static OKitty.OkInput;
+using static OKitty.OkInstance;
+using static OKitty.OkMath;
+using static OKitty.OkScript;
+using static OKitty.OkSecurity;
+using static OKitty.OkStyling;
 
 namespace OTest;
 
@@ -8,11 +14,16 @@ class Program
     {
         OWindowOptions options = new OWindowOptions()
         {
-            
+            Name = ""
         };
         OWindow window = new OWindow(options);
-        
-        window.BackgroundColor = OkStyling.OColor.FromArgb(125, 255, 255, 255);
+
+        window.Keyboard.OnKeyDown += (OKeyboard.OKeyboardKey key, OKeyboard.OModifierKey modifier) =>
+        {
+            string value = window.Keyboard.GetValue(key, modifier);
+
+            window.Name += value;
+        };
         
         window.Initialize();
         window.Run();

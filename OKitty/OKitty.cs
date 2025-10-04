@@ -1,6 +1,5 @@
 ﻿// Imports
 
-using System.Collections.ObjectModel;
 using static OKitty.OkInput;
 using static OKitty.OkInstance;
 using static OKitty.OkMath;
@@ -65,6 +64,7 @@ public record OWindowOptions
     public OVector2<int> Size { get; init; } = new OVector2<int>(800, 600);
     public OVector2<int> Position { get; init; } = new OVector2<int>(-1, -1);
     public OWindow.OWindowCloseOperation CloseOperation { get; init; } = OWindow.OWindowCloseOperation.Close;
+    public OWindow.OWindowState State { get; init; } = OWindow.OWindowState.Normal;
     public OWindow.OWindowBorder Border { get; init; } = OWindow.OWindowBorder.Resizable;
     public OColor BackgroundColor { get; init; } = OColor.White;
     public int Delay { get; init; } = 16;
@@ -77,7 +77,9 @@ public record OWindowOptions
 
     public override string ToString()
     {
-        string boolean = " " + (RenderWhileHidden ? "RenderWhileHidden " : "") + (Topmost ? "Topmost " : "") + (Focusable ? "Focusable" : "");
+        string boolean = " " + (RenderWhileHidden ? "RenderWhileHidden " : "")
+                             + (Topmost ? "Topmost " : "")
+                             + (Focusable ? "Focusable" : "");
 
         boolean = boolean == " " ? "" : boolean;
         
@@ -99,6 +101,14 @@ public class OWindow : IOPrototype
         Confirm
     }
 
+    public enum OWindowState
+    {
+        Normal,
+        Minimized,
+        Maximized,
+        Fullscreen
+    }
+
     public enum OWindowBorder
     {
         None,
@@ -110,13 +120,13 @@ public class OWindow : IOPrototype
 
     private IntPtr _window;
     private IntPtr _renderer;
-    private SDL.FRect _surface;
     private OKeyboard _keyboard;
     private OMouse _mouse;
     private Stopwatch _stopwatch;
     private string _name;
     private OVector2<int> _size;
     private OVector2<int> _position;
+    private OWindowState _state;
     private OWindowBorder _border;
     private float _opacity;
     private bool _topmost;
@@ -124,7 +134,6 @@ public class OWindow : IOPrototype
 
     public IntPtr WindowHandle => _window;
     public IntPtr RendererHandle => _renderer;
-    public SDL.FRect SurfaceHandle => _surface;
     public OKeyboard Keyboard => _keyboard;
     public OMouse Mouse => _mouse;
     public string Icon => "󰍹";
@@ -194,6 +203,70 @@ public class OWindow : IOPrototype
                 {
                     SDL.SetWindowPosition(_window, value.X, value.Y);
                 }, IntPtr.Zero, false);
+        }
+    }
+
+    public OWindowState State
+    {
+        get => _state;
+        set
+        {
+            _state = value;
+            
+            if (!Initialized)
+                return;
+
+            if (SDL.IsMainThread())
+                switch (value)
+                {
+                    case OWindowState.Normal:
+                        SDL.SetWindowFullscreen(_window, false);
+                        SDL.RestoreWindow(_window);
+
+                        break;
+                    case OWindowState.Minimized:
+                        SDL.SetWindowFullscreen(_window, false);
+                        SDL.MinimizeWindow(_window);
+
+                        break;
+                    case OWindowState.Maximized:
+                        SDL.SetWindowFullscreen(_window, false);
+                        SDL.MaximizeWindow(_window);
+
+                        break;
+                    case OWindowState.Fullscreen:
+                        SDL.SetWindowFullscreen(_window, true);
+
+                        break;
+                }
+            else
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    switch (value)
+                    {
+                        case OWindowState.Normal:
+                            SDL.SetWindowFullscreen(_window, false);
+                            SDL.RestoreWindow(_window);
+                        
+                            break;
+                        case OWindowState.Minimized:
+                            SDL.SetWindowFullscreen(_window, false);
+                            SDL.MinimizeWindow(_window);
+                        
+                            break;
+                        case OWindowState.Maximized:
+                            SDL.SetWindowFullscreen(_window, false);
+                            SDL.MaximizeWindow(_window);
+                        
+                            break;
+                        case OWindowState.Fullscreen:
+                            SDL.SetWindowFullscreen(_window, true);
+                        
+                            break;
+                    }
+                }, IntPtr.Zero, false);
+            
+            OnStateChanged?.Invoke(value);
         }
     }
 
@@ -315,6 +388,7 @@ public class OWindow : IOPrototype
     public event OWindowEvents.OnStart? OnStart; 
     public event OWindowEvents.OnUpdate? OnUpdate; 
     public event OWindowEvents.OnEnd? OnEnd;
+    public event OWindowEvents.OnStateChanged? OnStateChanged;
     public event OWindowEvents.OnResize? OnResize;
     public event OWindowEvents.OnMove? OnMove;
 
@@ -329,6 +403,7 @@ public class OWindow : IOPrototype
         _size = options.Size;
         _position = options.Position;
         CloseOperation = options.CloseOperation;
+        _state = options.State;
         _border = options.Border;
         BackgroundColor = options.BackgroundColor;
         Delay = options.Delay;
@@ -346,6 +421,7 @@ public class OWindow : IOPrototype
             Size = _size,
             Position = _position,
             CloseOperation = CloseOperation,
+            State = _state,
             Border = Border,
             BackgroundColor = BackgroundColor,
             Delay = Delay,
@@ -558,9 +634,6 @@ public class OWindow : IOPrototype
             return null;
     
         _stopwatch.Start();
-
-        _surface.W = _size.X;
-        _surface.H = _size.Y;
     
         (byte alpha, byte red, byte green, byte blue) = BackgroundColor.Argb;
         float opacity = alpha / 255f;
@@ -581,7 +654,7 @@ public class OWindow : IOPrototype
 
     private bool Filter(IntPtr _, ref SDL.Event ev)
     {
-        if (ev.Window.WindowID != SDL.GetWindowID(_window))
+        if (ev.Window.WindowID != SDL.GetWindowID(_window) || !Initialized)
             return false;
 
         switch (ev.Type)
@@ -666,6 +739,29 @@ public class OWindow : IOPrototype
         else
             SDL.SetWindowPosition(_window, _position.X, _position.Y);
         
+        switch (_state)
+        {
+            case OWindowState.Normal:
+                SDL.SetWindowFullscreen(_window, false);
+                SDL.RestoreWindow(_window);
+
+                break;
+            case OWindowState.Minimized:
+                SDL.SetWindowFullscreen(_window, false);
+                SDL.MinimizeWindow(_window);
+
+                break;
+            case OWindowState.Maximized:
+                SDL.SetWindowFullscreen(_window, false);
+                SDL.MaximizeWindow(_window);
+
+                break;
+            case OWindowState.Fullscreen:
+                SDL.SetWindowFullscreen(_window, true);
+
+                break;
+        }
+        
         switch (_border)
         {
             case OWindowBorder.None:
@@ -688,11 +784,6 @@ public class OWindow : IOPrototype
         SDL.SetWindowAlwaysOnTop(_window, _topmost);
         SDL.SetWindowFocusable(_window, _focusable);
 
-        _surface = new SDL.FRect()
-        {
-            W = _size.X,
-            H = _size.Y
-        };
         Initialized = true;
         
         _keyboard.Initialize();

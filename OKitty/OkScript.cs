@@ -30,6 +30,7 @@ public static class OkScript
         public delegate void OnStart();
         public delegate void OnUpdate(double deltaTime);
         public delegate void OnEnd(bool closed);
+        public delegate void OnStateChanged(OWindow.OWindowState state);
         public delegate void OnResize(OVector2<int> size);
         public delegate void OnMove(OVector2<int> position);
     }
@@ -100,7 +101,7 @@ public static class OkScript
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             
-            Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.Write($"[!] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
             Console.ResetColor();
         }
 
@@ -116,15 +117,17 @@ public static class OkScript
 
             Console.ForegroundColor = ConsoleColor.Red;
             
-            Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.Write($"[!] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
             Console.ResetColor();
         }
 
         public static void Throw(Exception exception)
         {
             if (OConfigs.Debug)
+            {
                 if (OConfigs.DebugMode.HasFlag(OConfigs.ODebugMode.Cli))
                     Error(exception.Message);
+            }
             else
                 throw exception;
         }
