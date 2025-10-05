@@ -213,6 +213,179 @@ public static class OkInstance
         }
     }
 
+    public class OStorage : IOInstance
+    {
+        // Properties and Fields
+        
+        private OWindow _window;
+        private List<IOInstance> _children;
+
+        IOInstance? IOInstance.Parent { get; set; } = null;
+        
+        public OWindow Window => _window;
+        public string Icon => "";
+        public string InstanceName => "OStorage";
+        public string Name { get; set; } = "OStorage";
+        public HashSet<string> Tags { get; } = new HashSet<string>();
+        
+        // Events
+        
+        public event OInstanceEvents.OnChildAdded? OnChildAdded;
+        public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
+        
+        // Methods and Functions
+
+        public OStorage(OWindow window, string name = "OStorage")
+        {
+            _window = window;
+            Name = name;
+        }
+
+        public ReadOnlyCollection<IOInstance> GetChildren()
+        {
+            return new ReadOnlyCollection<IOInstance>(_children);
+        }
+
+        public ReadOnlyCollection<IOInstance> GetDescendants()
+        {
+            List<IOInstance> descendants = new List<IOInstance>();
+
+            descendants.AddRange(_children);
+
+            foreach (IOInstance descendant in descendants)
+                descendants.AddRange(descendant.GetDescendants());
+
+            return new ReadOnlyCollection<IOInstance>(descendants);
+        }
+
+        public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, bool> selector)
+        {
+            List<IOInstance> selected = _children.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, int, bool> selector)
+        {
+            List<IOInstance> selected = _children.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> DescendantsSelector(Func<IOInstance, bool> selector)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+            List<IOInstance> selected = descendants.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> DescendantsSelector(Func<IOInstance, int, bool> selector)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+            List<IOInstance> selected = descendants.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public IOInstance? FindFirstChildNamed(string name)
+        {
+            foreach (IOInstance child in _children)
+                if (child.Name == name)
+                    return child;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstChildWhichIsA(string instance)
+        {
+            foreach (IOInstance child in _children)
+                if (child.InstanceName == instance)
+                    return child;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstDescendantNamed(string name)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+
+            foreach (IOInstance descendant in descendants)
+                if (descendant.Name == name)
+                    return descendant;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+
+            foreach (IOInstance descendant in descendants)
+                if (descendant.InstanceName == instance)
+                    return descendant;
+
+            return null;
+        }
+        
+        public bool IsAChildOf(string instance)
+        {
+            return instance == "OWindow";
+        }
+
+        public bool IsADescendantOf(string instance)
+        {
+            return instance == "OWindow";
+        }
+        
+        public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
+        {
+            return null;
+        }
+
+        public void Dispose()
+        {
+            foreach (IOInstance child in _children)
+                child.Dispose();
+            
+            _children.Clear();
+        }
+
+        public ORenderInfo? Render()
+        {
+            return null;
+        }
+
+        public void AddChild(IOInstance child)
+        {
+            if (_children.Contains(child))
+                return;
+            
+            _children.Add(child);
+
+            if (child.Parent != this)
+                child.Parent = this;
+            
+            OnChildAdded?.Invoke(child);
+        }
+
+        public void RemoveChild(IOInstance child)
+        {
+            if (!_children.Remove(child))
+                return;
+
+            if (child.Parent == this)
+                child.Parent = null;
+            
+            OnChildRemoved?.Invoke(child);
+        }
+
+        public override string ToString()
+        {
+            return $"<OStorage Window=\"{_window.Name}\" Name=\"{Name}\">";
+        }
+    }
+
     public class OScenes : IOInstance
     {
         // Properties and Fields
@@ -266,12 +439,11 @@ public static class OkInstance
             
             _main.Parent = this;
         }
-    
+
         public ReadOnlyCollection<OScene> GetScenes()
         {
             List<OScene> scenes = new List<OScene>();
             
-            scenes.Add(_main);
             scenes.AddRange(_scenes);
     
             return new ReadOnlyCollection<OScene>(scenes);
@@ -281,10 +453,100 @@ public static class OkInstance
         {
             List<IOInstance> children = new List<IOInstance>();
             
-            children.Add(_main);
             children.AddRange(_scenes);
     
             return new ReadOnlyCollection<IOInstance>(children);
+        }
+
+        public ReadOnlyCollection<IOInstance> GetDescendants()
+        {
+            List<IOInstance> descendants = new List<IOInstance>();
+
+            descendants.AddRange(_scenes);
+
+            foreach (IOInstance descendant in descendants)
+                descendants.AddRange(descendant.GetDescendants());
+
+            return new ReadOnlyCollection<IOInstance>(descendants);
+        }
+
+        public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, bool> selector)
+        {
+            List<IOInstance> selected = _scenes.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, int, bool> selector)
+        {
+            List<IOInstance> selected = _scenes.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> DescendantsSelector(Func<IOInstance, bool> selector)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+            List<IOInstance> selected = descendants.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> DescendantsSelector(Func<IOInstance, int, bool> selector)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+            List<IOInstance> selected = descendants.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public IOInstance? FindFirstChildNamed(string name)
+        {
+            foreach (OScene scene in _scenes)
+                if (scene.Name == name)
+                    return scene;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstChildWhichIsA(string instance)
+        {
+            if (instance == "OScene")
+                return _main;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstDescendantNamed(string name)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+
+            foreach (IOInstance descendant in descendants)
+                if (descendant.Name == name)
+                    return descendant;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+
+            foreach (IOInstance descendant in descendants)
+                if (descendant.InstanceName == instance)
+                    return descendant;
+
+            return null;
+        }
+
+        public bool IsAChildOf(string instance)
+        {
+            return instance == "OWindow";
+        }
+
+        public bool IsADescendantOf(string instance)
+        {
+            return instance == "OWindow";
         }
     
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
@@ -302,9 +564,9 @@ public static class OkInstance
     
         public ORenderInfo? Render()
         {
-            // TODO!
+            ORenderInfo? info = _active == 0 ? _main.Render() : _scenes[_active - 1].Render();
     
-            return null;
+            return info;
         }
     
         public void AddChild(IOInstance child)
@@ -339,8 +601,14 @@ public static class OkInstance
             if (scene == _main)
                 return;
 
-            if (!_scenes.Remove(scene))
+            if (!_scenes.Contains(scene))
                 return;
+            
+            if (_active != 0)
+                if (_scenes[_active - 1] == child)
+                    _active = 0;
+            
+            _scenes.Remove(scene);
             
             if (scene.Parent == this)
                 scene.Parent = null;
@@ -442,6 +710,102 @@ public static class OkInstance
         public ReadOnlyCollection<IOInstance> GetChildren()
         {
             return new ReadOnlyCollection<IOInstance>(_children);
+        }
+
+        public ReadOnlyCollection<IOInstance> GetDescendants()
+        {
+            List<IOInstance> descendants = new List<IOInstance>();
+
+            descendants.AddRange(_children);
+
+            foreach (IOInstance descendant in descendants)
+                descendants.AddRange(descendant.GetDescendants());
+
+            return new ReadOnlyCollection<IOInstance>(descendants);
+        }
+
+        public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, bool> selector)
+        {
+            List<IOInstance> selected = _children.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> ChildrenSelector(Func<IOInstance, int, bool> selector)
+        {
+            List<IOInstance> selected = _children.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> DescendantsSelector(Func<IOInstance, bool> selector)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+            List<IOInstance> selected = descendants.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public ReadOnlyCollection<IOInstance> DescendantsSelector(Func<IOInstance, int, bool> selector)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+            List<IOInstance> selected = descendants.Where(selector).ToList();
+
+            return new ReadOnlyCollection<IOInstance>(selected);
+        }
+
+        public IOInstance? FindFirstChildNamed(string name)
+        {
+            foreach (IOInstance child in _children)
+                if (child.Name == name)
+                    return child;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstChildWhichIsA(string instance)
+        {
+            foreach (IOInstance child in _children)
+                if (child.InstanceName == instance)
+                    return child;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstDescendantNamed(string name)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+
+            foreach (IOInstance descendant in descendants)
+                if (descendant.Name == name)
+                    return descendant;
+
+            return null;
+        }
+
+        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        {
+            ReadOnlyCollection<IOInstance> descendants = GetDescendants();
+
+            foreach (IOInstance descendant in descendants)
+                if (descendant.InstanceName == instance)
+                    return descendant;
+
+            return null;
+        }
+
+        public bool IsAChildOf(string instance)
+        {
+            return _parent is not null && _parent.InstanceName == instance;
+        }
+
+        public bool IsADescendantOf(string instance)
+        {
+            for (IOInstance? next = _parent; next != null; next = next.Parent)
+                if (next.InstanceName == instance)
+                    return true;
+
+            return false;
         }
 
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)

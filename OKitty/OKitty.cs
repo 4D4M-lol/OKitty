@@ -120,8 +120,11 @@ public class OWindow : IOPrototype
 
     private IntPtr _window;
     private IntPtr _renderer;
+    private SDL.EventFilter _filter;
     private OKeyboard _keyboard;
     private OMouse _mouse;
+    private OStorage _storage;
+    private OScenes _scenes;
     private Stopwatch _stopwatch;
     private string _name;
     private OVector2<int> _size;
@@ -136,6 +139,8 @@ public class OWindow : IOPrototype
     public IntPtr RendererHandle => _renderer;
     public OKeyboard Keyboard => _keyboard;
     public OMouse Mouse => _mouse;
+    public OStorage Storage => _storage;
+    public OScenes Scenes => _scenes;
     public string Icon => "󰍹";
     public string InstanceName => "OWindow";
     public bool Initialized { get; private set; } = false;
@@ -396,8 +401,10 @@ public class OWindow : IOPrototype
     
     public OWindow(OWindowOptions options)
     {
+        _filter = Filter;
         _keyboard = new OKeyboard(this);
         _mouse = new OMouse(this);
+        _storage = new OStorage(this, "Storage");
         _stopwatch = new Stopwatch();
         _name = options.Name;
         _size = options.Size;
@@ -411,6 +418,10 @@ public class OWindow : IOPrototype
         RenderWhileHidden = options.RenderWhileHidden;
         _topmost = options.Topmost;
         _focusable = options.Focusable;
+
+        OScene main = new OScene(null, "Main", true);
+
+        _scenes = new OScenes(this, main, "Scenes");
     }
 
     public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
@@ -727,7 +738,7 @@ public class OWindow : IOPrototype
             return;
         }
         
-        if (!SDL.AddEventWatch(Filter, IntPtr.Zero))
+        if (!SDL.AddEventWatch(_filter, IntPtr.Zero))
         {
             ODebugger.Throw(new ExternalException($"Failed to add SDL event watch: {SDL.GetError()}.\n"));
             
