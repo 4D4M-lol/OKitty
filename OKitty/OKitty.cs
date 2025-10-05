@@ -476,7 +476,7 @@ public class OWindow : IOPrototype
     {
         if (Initialized)
         {
-            ODebugger.Throw(new ConstraintException("Window can not be initialized twice.\n"));
+            ODebugger.Warn("Window can not be initialized twice.\n");
             
             return;
         }
@@ -496,7 +496,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before being ran.\n"));
+            ODebugger.Warn("Window must be initialized before being ran.\n");
             
             return;
         }
@@ -520,7 +520,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before showing a message box.\n"));
+            ODebugger.Warn("Window must be initialized before showing a message box.\n");
             
             return;
         }
@@ -538,7 +538,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before showing a message box.\n"));
+            ODebugger.Warn("Window must be initialized before showing a message box.\n");
             
             return;
         }
@@ -556,7 +556,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before showing a message box.\n"));
+            ODebugger.Warn("Window must be initialized before showing a message box.\n");
             
             return;
         }
@@ -574,7 +574,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before showing a message box.\n"));
+            ODebugger.Warn("Window must be initialized before showing a message box.\n");
             
             return;
         }
@@ -592,7 +592,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before being hid.\n"));
+            ODebugger.Warn("Window must be initialized before being hid.\n");
             
             return;
         }
@@ -614,7 +614,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before being shown.\n"));
+            ODebugger.Warn("Window must be initialized before being shown.\n");
             
             return;
         }
@@ -636,7 +636,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Throw(new ApplicationException("Window must be initialized before being rendered.\n"));
+            ODebugger.Warn("Window must be initialized before being rendered.\n");
             
             return null;
         }

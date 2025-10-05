@@ -411,7 +411,7 @@ public static class OkInstance
             {
                 if (value < 0 || value > _scenes.Count)
                 {
-                    ODebugger.Throw(new IndexOutOfRangeException($"\"Active\" can only be between 0 to {_scenes.Count}."));
+                    ODebugger.Warn($"\"Active\" can only be between 0 to {_scenes.Count}.");
 
                     return;
                 }
@@ -573,7 +573,7 @@ public static class OkInstance
         {
             if (!(child is OScene scene))
             {
-                ODebugger.Throw(new ArgumentException("Only an OScene can be parented to an OScenes."));
+                ODebugger.Warn("Only an OScene can be parented to an OScenes.");
                 
                 return;
             }
@@ -593,7 +593,7 @@ public static class OkInstance
         {
             if (!(child is OScene scene))
             {
-                ODebugger.Throw(new ArgumentException("Only an OScene can be parented to an OScenes."));
+                ODebugger.Warn("Only an OScene can be parented to an OScenes.");
                 
                 return;
             }
@@ -647,21 +647,21 @@ public static class OkInstance
                 {
                     if (!(_parent is null))
                     {
-                        ODebugger.Throw(new ArgumentException("The parent of an OScene can not be changed."));
+                        ODebugger.Warn("The parent of a main scene can not be changed.");
 
                         return;
                     }
 
                     if (!(value is OScenes scenes))
                     {
-                        ODebugger.Throw(new ArgumentException("Parent must be an OScenes if this was a main scene."));
+                        ODebugger.Warn("Parent must be an OScenes if this was a main scene.");
 
                         return;
                     }
 
                     if (scenes.Main != this)
                     {
-                        ODebugger.Throw(new ArgumentException("The main scene of the provided OScenes is a different scene."));
+                        ODebugger.Warn("The main scene of the provided OScenes is a different scene.");
 
                         return;
                     }
@@ -695,7 +695,7 @@ public static class OkInstance
     
             if (main && !(parent is null))
             {
-                ODebugger.Throw(new ArgumentException("Parent must be null if this scene is a main scene."));
+                ODebugger.Warn("Parent must be null if this scene is a main scene.");
     
                 return;
             }
@@ -810,7 +810,9 @@ public static class OkInstance
 
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
         {
-            throw new NotImplementedException();
+            // TODO!
+
+            return null;
         }
 
         public void Dispose()

@@ -358,14 +358,14 @@ public static class OkInput
         {
             if (Initialized)
             {
-                ODebugger.Throw(new ConstraintException("Keyboard can not be initialized twice.\n"));
+                ODebugger.Warn("Keyboard can not be initialized twice.\n");
 
                 return;
             }
 
             if (!_window.Initialized)
             {
-                ODebugger.Throw(new ApplicationException("Window must be initialized first.\n"));
+                ODebugger.Warn("Window must be initialized first.\n");
 
                 return;
             }
@@ -460,7 +460,7 @@ public static class OkInput
                     SDL.PushEvent(ref ev);
                 }, IntPtr.Zero, false);
 
-            ODebugger.Log($"Key press simulated for \"{_window.Name}\".\n");
+            ODebugger.Inform($"Key press simulated for \"{_window.Name}\".\n");
 
             if (release)
                 Release(key, modifier);
@@ -534,7 +534,7 @@ public static class OkInput
                     SDL.PushEvent(ref ev);
                 }, IntPtr.Zero, false);
 
-            ODebugger.Log($"Key release simulated for \"{_window.Name}\".\n");
+            ODebugger.Inform($"Key release simulated for \"{_window.Name}\".\n");
         }
 
         public OModifierKey GetModifiers()
@@ -735,14 +735,14 @@ public static class OkInput
         {
             if (Initialized)
             {
-                ODebugger.Throw(new ConstraintException("Mouse can not be initialized twice."));
+                ODebugger.Warn("Keyboard can not be initialized twice.\n");
 
                 return;
             }
 
             if (!_window.Initialized)
             {
-                ODebugger.Throw(new ApplicationException("Window must be initialized first."));
+                ODebugger.Warn("Window must be initialized first.\n");
 
                 return;
             }
@@ -802,7 +802,7 @@ public static class OkInput
                     SDL.PushEvent(ref ev);
                 }, IntPtr.Zero, false);
                 
-            ODebugger.Log($"Mouse click simulated for \"{_window.Name}\".\n");
+            ODebugger.Inform($"Mouse click simulated for \"{_window.Name}\".\n");
         }
 
         public void Move(OVector2<float> position, bool global = false)
@@ -838,7 +838,7 @@ public static class OkInput
                     Position = position;
                 }, IntPtr.Zero, false);
                 
-            ODebugger.Log($"Mouse move simulated for \"{_window.Name}\".\n");
+            ODebugger.Inform($"Mouse move simulated for \"{_window.Name}\".\n");
         }
 
         private bool Filter(IntPtr _, ref SDL.Event ev)
