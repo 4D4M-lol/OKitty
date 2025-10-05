@@ -344,7 +344,20 @@ public static class OkInstance
         
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
         {
-            return null;
+            OStorage clone = new OStorage(_window, Name);
+
+            if (cloneChildren || cloneDescendants)
+            {
+                foreach (IOInstance child in _children)
+                {
+                    IOInstance? childClone = (IOInstance?)child.Clone(cloneDescendants, cloneDescendants);
+                    
+                    if (childClone != null)
+                        clone.AddChild(childClone);
+                }
+            }
+
+            return clone;
         }
 
         public void Dispose()
@@ -557,7 +570,26 @@ public static class OkInstance
     
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
         {
-            return null;
+            OScene mainClone = (OScene)(_main.Clone(cloneDescendants, cloneDescendants) ?? new OScene(null, "Main", true));
+            OScenes clone = new OScenes(_window, mainClone, Name);
+
+            if (cloneChildren || cloneDescendants)
+            {
+                foreach (OScene scene in _scenes)
+                {
+                    if (scene.Main)
+                        continue;
+                    
+                    OScene? sceneClone = (OScene?)scene.Clone(cloneDescendants, cloneDescendants);
+                    
+                    if (sceneClone != null)
+                        clone.AddChild(sceneClone);
+                }
+            }
+
+            clone.Active = _active;
+            
+            return clone;
         }
     
         public void Dispose()
@@ -818,9 +850,20 @@ public static class OkInstance
 
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
         {
-            // TODO!
+            OScene clone = new OScene(null, Name, Main);
 
-            return null;
+            if (cloneChildren || cloneDescendants)
+            {
+                foreach (IOInstance child in _children)
+                {
+                    IOInstance? childClone = (IOInstance?)child.Clone(cloneDescendants, cloneDescendants);
+                    
+                    if (childClone != null)
+                        clone.AddChild(childClone);
+                }
+            }
+
+            return clone;
         }
 
         public void Dispose()
@@ -857,11 +900,9 @@ public static class OkInstance
 
         public ORenderInfo? Render()
         {
-            // TODO!
-
-            return null;
+            throw new NotImplementedException();
         }
-    
+
         // To String
 
         public override string ToString()

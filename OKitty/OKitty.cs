@@ -441,14 +441,29 @@ public class OWindow : IOPrototype
             Topmost = _topmost,
             Focusable = _focusable
         };
-        OWindow window = new OWindow(options);
 
-        if (cloneChildren)
+        OWindow clone = new OWindow(options);
+
+        if (cloneChildren || cloneDescendants)
         {
-            // TODO!
+            foreach (IOInstance child in _storage.GetChildren())
+            {
+                IOInstance? childClone = (IOInstance?)child.Clone(cloneDescendants, cloneDescendants);
+                
+                if (childClone != null)
+                    clone._storage.AddChild(childClone);
+            }
+
+            foreach (OScene scene in _scenes.GetScenes())
+            {
+                OScene? sceneClone = (OScene?)scene.Clone(cloneDescendants, cloneDescendants);
+                
+                if (sceneClone != null)
+                    clone._scenes.AddChild(sceneClone);
+            }
         }
 
-        return window;
+        return clone;
     }
 
     public void Dispose()
