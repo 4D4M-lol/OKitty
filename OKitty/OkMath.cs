@@ -1,6 +1,8 @@
 ﻿// Imports
 
+using System.Collections.ObjectModel;
 using System.Numerics;
+using static OKitty.OkStyling;
 
 namespace OKitty;
 
@@ -905,6 +907,324 @@ public static class OkMath
             OVector2<TOffset> offset = -vector.Offset;
             
             return new OLayoutVector2<TScale, TOffset>(scale, offset);
+        }
+    }
+
+    public struct ONumberSequence<TValue>
+        where TValue : INumber<TValue>
+    {
+        // Static Properties
+
+        public static readonly ONumberSequence<TValue> FadeIn = new ONumberSequence<TValue>(TValue.Zero, TValue.One, (0, TValue.Zero), (1, TValue.One));
+        public static readonly ONumberSequence<TValue> FadeOut = new ONumberSequence<TValue>(TValue.Zero, TValue.One, (0, TValue.One), (1, TValue.Zero));
+        
+        // Properties and Fields
+        
+        public ReadOnlySet<(float Time, TValue Value)> Sequence { get; }
+        public TValue Min { get; }
+        public TValue Max { get; }
+        
+        // Methods and Functions
+
+        public ONumberSequence(TValue? min = default, TValue? max = default, params (float Time, TValue Value)[] keypoints)
+        {
+            Min = min ?? TValue.Zero;
+            Max = max ?? TValue.One;
+            
+            if (Min > Max)
+                (Min, Max) = (Max, Min);
+
+            Dictionary<float, TValue> timeToValue = new Dictionary<float, TValue>();
+
+            foreach ((float time, TValue value) in keypoints)
+            {
+                float clampedTime = Math.Clamp(time, 0f, 1f);
+                TValue clampedValue = TValue.Clamp(value, Min, Max);
+                
+                timeToValue[clampedTime] = clampedValue;
+            }
+            
+            HashSet<(float Time, TValue Value)> sorted = timeToValue
+                .OrderBy((KeyValuePair<float, TValue> pair) => pair.Key)
+                .Select((KeyValuePair<float, TValue> pair) => (pair.Key, pair.Value))
+                .ToHashSet();
+
+            Sequence = new ReadOnlySet<(float Time, TValue Value)>(sorted);
+        }
+
+        public TValue GetValue(float time)
+        {
+            if (Sequence.Count == 0)
+                return TValue.Zero;
+            
+            time = Math.Clamp(time, 0f, 1f);
+
+            List<(float Time, TValue Value)> sorted = Sequence.OrderBy(((float Time, TValue Value) keypoint) => keypoint.Time).ToList();
+
+            if (time <= sorted.First().Time)
+                return sorted.First().Value;
+
+            if (time >= sorted.Last().Time)
+                return sorted.Last().Value;
+
+            (float Time, TValue Value) a = sorted.First();
+            (float Time, TValue Value) b = sorted.Last();
+
+            for (int i = 0; i < sorted.Count - 1; i++)
+            {
+                if (time >= sorted[i].Time && time <= sorted[i + 1].Time)
+                {
+                    a = sorted[i];
+                    b = sorted[i + 1];
+                    
+                    break;
+                }
+            }
+
+            if (b.Time == a.Time)
+                return a.Value;
+
+            float t = (time - a.Time) / (b.Time - a.Time);
+            double av = double.CreateChecked(a.Value);
+            double bv = double.CreateChecked(b.Value);
+            double result = av + (bv - av) * t;
+
+            return TValue.CreateChecked(result);
+        }
+        
+        // To String
+
+        public override string ToString()
+        {
+            return $"Number sequence {GetValue(0)} - {GetValue(1)}";
+        }
+        
+        // Equals and Hashing
+        
+        public override bool Equals(object? obj)
+        {
+            if (obj is ONumberSequence<TValue> other)
+                return this == other;
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Min, Max, Sequence.Count);
+        }
+        
+        // Binary Operators
+        
+        public static ONumberSequence<TValue> operator *(ONumberSequence<TValue> sequence, TValue scale)
+        {
+            (float Time, TValue Value)[] scaled = sequence.Sequence
+                .Select(((float Time, TValue Value) keypoint) => (keypoint.Time, keypoint.Value * scale))
+                .ToArray();
+
+            return new ONumberSequence<TValue>(sequence.Min, sequence.Max, scaled);
+        }
+
+        public static ONumberSequence<TValue> operator /(ONumberSequence<TValue> sequence, TValue divisor)
+        {
+            (float Time, TValue Value)[] scaled = sequence.Sequence
+                .Select(((float Time, TValue Value) keypoint) => (keypoint.Time, keypoint.Value / divisor))
+                .ToArray();
+
+            return new ONumberSequence<TValue>(sequence.Min, sequence.Max, scaled);
+        }
+        
+        public static bool operator ==(ONumberSequence<TValue> left, ONumberSequence<TValue> right)
+        {
+            return left.Min == right.Min &&
+                   left.Max == right.Max &&
+                   left.Sequence.SequenceEqual(right.Sequence);
+        }
+
+        public static bool operator !=(ONumberSequence<TValue> left, ONumberSequence<TValue> right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public struct OColorSequence
+    {
+        // Static Properties
+
+        public static readonly OColorSequence Cool = new OColorSequence(
+            (0f, new OColor(OColor.OColorShades.Blue100)),
+            (0.5f, new OColor(OColor.OColorShades.Blue500)),
+            (1f, new OColor(OColor.OColorShades.Blue900))
+        );
+
+        public static readonly OColorSequence Hot = new OColorSequence(
+            (0f, new OColor(OColor.OColorShades.Red100)),
+            (0.5f, new OColor(OColor.OColorShades.Red500)),
+            (1f, new OColor(OColor.OColorShades.Red900))
+        );
+
+        public static readonly OColorSequence Grayscale = new OColorSequence(
+            (0f, OColor.Black),
+            (1f, OColor.White)
+        );
+
+        public static readonly OColorSequence Nebula = new OColorSequence(
+            (0f, new OColor(OColor.OColorShades.Blue300)),
+            (0.5f, new OColor(OColor.OColorShades.Purple500)),
+            (1f, new OColor(OColor.OColorShades.Red500))
+        );
+
+        public static readonly OColorSequence Spring = new OColorSequence(
+            (0f, new OColor(OColor.OColors.Fuchsia)),
+            (1f, new OColor(OColor.OColors.Yellow))
+        );
+
+        public static readonly OColorSequence Summer = new OColorSequence(
+            (0f, new OColor(OColor.OColors.Green)),
+            (1f, new OColor(OColor.OColors.LightYellow))
+        );
+
+        public static readonly OColorSequence Autumn = new OColorSequence(
+            (0f, new OColor(OColor.OColors.OrangeRed)),
+            (1f, new OColor(OColor.OColors.Yellow))
+        );
+
+        public static readonly OColorSequence Winter = new OColorSequence(
+            (0f, new OColor(OColor.OColors.MediumBlue)),
+            (1f, new OColor(OColor.OColors.SpringGreen))
+        );
+
+        public static readonly OColorSequence Sky = new OColorSequence(
+            (0f, new OColor(OColor.OColors.LightSkyBlue)),
+            (0.5f, new OColor(OColor.OColors.SkyBlue)),
+            (1f, new OColor(OColor.OColors.DeepSkyBlue))
+        );
+
+        public static readonly OColorSequence Rainbow = new OColorSequence(
+            (0f, new OColor(OColor.OColors.Red)),
+            (0.17f, new OColor(OColor.OColors.Yellow)),
+            (0.33f, new OColor(OColor.OColors.Lime)),
+            (0.5f, new OColor(OColor.OColors.Aqua)),
+            (0.67f, new OColor(OColor.OColors.Blue)),
+            (0.83f, new OColor(OColor.OColors.Fuchsia)),
+            (1f, new OColor(OColor.OColors.Red))
+        );
+
+        public static readonly OColorSequence Fire = new OColorSequence(
+            (0f, new OColor(OColor.OColors.DarkRed)),
+            (0.4f, new OColor(OColor.OColors.OrangeRed)),
+            (0.7f, new OColor(OColor.OColors.Yellow)),
+            (1f, new OColor(OColor.OColors.White))
+        );
+
+        public static readonly OColorSequence Water = new OColorSequence(
+            (0f, new OColor(OColor.OColors.MidnightBlue)),
+            (0.5f, new OColor(OColor.OColors.DeepSkyBlue)),
+            (1f, new OColor(OColor.OColors.Aqua))
+        );
+
+        public static readonly OColorSequence Plasma = new OColorSequence(
+            (0f, new OColor(OColor.OColors.DarkBlue)),
+            (0.25f, new OColor(OColor.OColors.MediumPurple)),
+            (0.5f, new OColor(OColor.OColors.OrangeRed)),
+            (1f, new OColor(OColor.OColors.Yellow))
+        );
+        
+        // Properties and Fields
+        
+        public ReadOnlySet<(float Time, OColor Color)> Sequence { get; }
+        
+        // Methods
+
+        public OColorSequence(params (float Time, OColor Color)[] keypoints)
+        {
+            Dictionary<float, OColor> timeToValue = new Dictionary<float, OColor>();
+
+            foreach ((float time, OColor color) in keypoints)
+            {
+                float clampedTime = Math.Clamp(time, 0f, 1f);
+
+                timeToValue[clampedTime] = color;
+            }
+            
+            HashSet<(float Time, OColor Color)> sorted = timeToValue
+                .OrderBy((KeyValuePair<float, OColor> pair) => pair.Key)
+                .Select((KeyValuePair<float, OColor> pair) => (pair.Key, pair.Value))
+                .ToHashSet();
+
+            Sequence = new ReadOnlySet<(float Time, OColor Color)>(sorted);
+        }
+
+        public OColor GetValue(float time)
+        {
+            if (Sequence.Count == 0)
+                return OColor.Transparent;
+
+            time = Math.Clamp(time, 0f, 1f);
+            
+            if (Sequence.Count == 1)
+                return Sequence.First().Color;
+
+            (float Time, OColor Color)[] sorted = Sequence.OrderBy(((float Time, OColor Color) keypoint) => keypoint.Time).ToArray();
+
+            if (time <= sorted[0].Time)
+                return sorted[0].Color;
+            
+            if (time >= sorted[^1].Time)
+                return sorted[^1].Color;
+
+            for (int i = 0; i < sorted.Length - 1; i++)
+            {
+                (float t0, OColor c0) = sorted[i];
+                (float t1, OColor c1) = sorted[i + 1];
+
+                if (time >= t0 && time <= t1)
+                {
+                    float alpha = (time - t0) / (t1 - t0);
+                    byte a = (byte)(c0.Argb.Alpha + (c1.Argb.Alpha - c0.Argb.Alpha) * alpha);
+                    byte r = (byte)(c0.Argb.Red   + (c1.Argb.Red   - c0.Argb.Red)   * alpha);
+                    byte g = (byte)(c0.Argb.Green + (c1.Argb.Green - c0.Argb.Green) * alpha);
+                    byte b = (byte)(c0.Argb.Blue  + (c1.Argb.Blue  - c0.Argb.Blue)  * alpha);
+
+                    return OColor.FromArgb(a, r, g, b);
+                }
+            }
+
+            return sorted[^1].Color;
+        }
+        
+        // To String
+
+        public override string ToString()
+        {
+            return $"Color sequence {GetValue(0)} - {GetValue(1)}";
+        }
+        
+        // Equals and Hashing
+        
+        public override bool Equals(object? obj)
+        {
+            if (obj is OColorSequence other)
+                return this == other;
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Sequence.Count);
+        }
+        
+        // Binary Operators
+
+        public static bool operator ==(OColorSequence left, OColorSequence right)
+        {
+            return left.Sequence.SequenceEqual(right.Sequence);
+        }
+
+        public static bool operator !=(OColorSequence left, OColorSequence right)
+        {
+            return !(left == right);
         }
     }
 }

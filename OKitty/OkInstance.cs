@@ -3,6 +3,7 @@
 using System.Collections.ObjectModel;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
+using static OKitty.OkStyling;
 
 namespace OKitty;
 
@@ -24,6 +25,8 @@ public static class OkInstance
 
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants);
         public ORenderInfo? Render();
+    
+        // To String
 
         public string ToString()
         {
@@ -154,9 +157,9 @@ public static class OkInstance
         public event OInstanceEvents.OnChildRemoved OnChildRemoved;
     }
 
-    // Structs
+    // Records
 
-    public struct OEdgeInfo
+    public record OEdgeInfo
     {
         // Properties
 
@@ -171,11 +174,12 @@ public static class OkInstance
         }
     }
 
-    public struct OFaceInfo
+    public record OFaceInfo
     {
         // Properties
 
         public required List<OEdgeInfo> Edges { get; init; }
+        public OColor Color { get; init; } = OColor.Black;
 
         // To String
 
@@ -379,6 +383,8 @@ public static class OkInstance
             
             OnChildRemoved?.Invoke(child);
         }
+    
+        // To String
 
         public override string ToString()
         {
@@ -615,6 +621,8 @@ public static class OkInstance
             
             OnChildRemoved?.Invoke(scene);
         }
+    
+        // To String
     
         public override string ToString()
         {
@@ -853,6 +861,8 @@ public static class OkInstance
 
             return null;
         }
+    
+        // To String
 
         public override string ToString()
         {

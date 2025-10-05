@@ -307,7 +307,7 @@ public static class OkInput
             _window = window;
         }
 
-        private static Dictionary<char, char> ShiftedSymbols { get; } = new()
+        private static readonly Dictionary<char, char> ShiftedSymbols = new()
         {
             ['1'] = '!',
             ['2'] = '@',

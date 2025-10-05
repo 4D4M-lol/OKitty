@@ -1,4 +1,8 @@
-﻿namespace OKitty;
+﻿// Imports
+
+using static OKitty.OkMath;
+
+namespace OKitty;
 
 // OkStyling
 
@@ -339,10 +343,17 @@ public static class OkStyling
         // Static Properties
 
         public static readonly OColor Red = new OColor(OColors.Red);
+        public static readonly OColor Orange = new OColor(OColors.Orange);
+        public static readonly OColor Yellow = new OColor(OColors.Yellow);
+        public static readonly OColor Brown = new OColor(OColors.Brown);
         public static readonly OColor Green = new OColor(OColors.Green);
+        public static readonly OColor Lime = new OColor(OColors.Lime);
         public static readonly OColor Blue = new OColor(OColors.Blue);
+        public static readonly OColor Purple = new OColor(OColors.Purple);
+        public static readonly OColor Pink = new OColor(OColors.Pink);
         public static readonly OColor White = new OColor(OColors.White);
         public static readonly OColor Black = new OColor(OColors.Black);
+        public static readonly OColor Transparent = new OColor((uint)0);
         
         // Properties and Fields
         
