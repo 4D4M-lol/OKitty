@@ -163,8 +163,9 @@ public static class OkInstance
     {
         // Properties
 
-        public required OVector2<float> Start { get; init; }
-        public required OVector2<float> End { get; init; }
+        public required OVector3<float> Start { get; init; }
+        public required OVector3<float> End { get; init; }
+        public OColor Color { get; init; } = OColor.Black;
 
         // To String
 
@@ -180,6 +181,18 @@ public static class OkInstance
 
         public required List<OEdgeInfo> Edges { get; init; }
         public OColor Color { get; init; } = OColor.Black;
+        
+        // Methods
+
+        public ReadOnlyCollection<OVector3<float>> GetVertices()
+        {
+            List<OVector3<float>> vertices = new List<OVector3<float>>();
+            
+            foreach (OEdgeInfo edge in Edges)
+                vertices.AddRange(edge.Start, edge.End);
+
+            return new ReadOnlyCollection<OVector3<float>>(vertices.Distinct().ToList());
+        }
 
         // To String
 

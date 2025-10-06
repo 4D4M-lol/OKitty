@@ -6,7 +6,6 @@ using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
 using SDL3;
-using System.Data;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -670,6 +669,10 @@ public class OWindow : IOPrototype
         SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.None);
         SDL.RenderClear(_renderer);
+        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
+        
+        
+        
         SDL.RenderPresent(_renderer);
         _stopwatch.Stop();
         OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
