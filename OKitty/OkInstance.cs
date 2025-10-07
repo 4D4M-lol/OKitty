@@ -1,6 +1,7 @@
 ﻿// Imports
 
 using System.Collections.ObjectModel;
+using static OKitty.OkInterface;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
@@ -615,9 +616,9 @@ public static class OkInstance
     
         public ORenderInfo? Render()
         {
-            ORenderInfo? info = _active == 0 ? _main.Render() : _scenes[_active - 1].Render();
-    
-            return info;
+            ODebugger.Warn("Scene rendering was handled by the window.");
+
+            return null;
         }
     
         public void AddChild(IOInstance child)
@@ -913,7 +914,9 @@ public static class OkInstance
 
         public ORenderInfo? Render()
         {
-            throw new NotImplementedException();
+            ODebugger.Warn("Scene rendering was handled by the window.");
+
+            return null;
         }
 
         // To String
