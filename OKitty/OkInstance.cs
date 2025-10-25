@@ -181,6 +181,7 @@ public static class OkInstance
         // Properties
 
         public required List<OEdgeInfo> Edges { get; init; }
+        public OFaceInfo? Mask { get; init; } = null;
         public OColor Color { get; init; } = OColor.Black;
         
         // Methods
@@ -199,7 +200,7 @@ public static class OkInstance
 
         public override string ToString()
         {
-            return $"[{{string.Join(\", \", Edges)}}]";
+            return $"[FaceInfo]";
         }
     }
 
@@ -210,14 +211,12 @@ public static class OkInstance
         // Properties and Fields
 
         public List<OFaceInfo> Faces { get; private set; }
-        public OFaceInfo? Mask { get; set; }
 
         // Methods and Functions
 
-        public ORenderInfo(List<OFaceInfo>? faces = null, OFaceInfo? mask = null)
+        public ORenderInfo(List<OFaceInfo>? faces = null)
         {
             Faces = faces ?? new List<OFaceInfo>();
-            Mask = mask;
         }
 
         // To String
@@ -225,9 +224,8 @@ public static class OkInstance
         public override string ToString()
         {
             string faces = string.Join(", ", Faces);
-            string mask = Mask is not null ? $"{Mask}" : "[null]";
 
-            return $"M{mask} F{faces}";
+            return $"[RenderInfo]";
         }
     }
 
@@ -616,14 +614,12 @@ public static class OkInstance
     
         public ORenderInfo? Render()
         {
-            ODebugger.Warn("Scene rendering was handled by the window.");
-
-            return null;
+            return _scenes[_active].Render();
         }
     
         public void AddChild(IOInstance child)
         {
-            if (!(child is OScene scene))
+            if (child is not OScene scene)
             {
                 ODebugger.Warn("Only an OScene can be parented to an OScenes.");
                 
@@ -643,7 +639,7 @@ public static class OkInstance
     
         public void RemoveChild(IOInstance child)
         {
-            if (!(child is OScene scene))
+            if (child is not OScene scene)
             {
                 ODebugger.Warn("Only an OScene can be parented to an OScenes.");
                 
@@ -699,14 +695,14 @@ public static class OkInstance
 
                 if (Main)
                 {
-                    if (!(_parent is null))
+                    if (_parent is not null)
                     {
                         ODebugger.Warn("The parent of a main scene can not be changed.");
 
                         return;
                     }
 
-                    if (!(value is OScenes scenes))
+                    if (value is not OScenes scenes)
                     {
                         ODebugger.Warn("Parent must be an OScenes if this was a main scene.");
 
@@ -747,7 +743,7 @@ public static class OkInstance
             Name = name;
             Main = main;
     
-            if (main && !(parent is null))
+            if (main && parent is not null)
             {
                 ODebugger.Warn("Parent must be null if this scene is a main scene.");
     
@@ -914,9 +910,19 @@ public static class OkInstance
 
         public ORenderInfo? Render()
         {
-            ODebugger.Warn("Scene rendering was handled by the window.");
+            List<OFaceInfo> result = new List<OFaceInfo>();
 
-            return null;
+            foreach (IOInstance child in _children)
+            {
+                ORenderInfo? info = child.Render();
+                
+                if (info is null)
+                    continue;
+                
+                result.AddRange(info.Faces);
+            }
+            
+            
         }
 
         // To String

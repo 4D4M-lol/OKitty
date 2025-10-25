@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using OKitty;
+using SDL3;
 using static OKitty.OkInput;
 using static OKitty.OkInstance;
 using static OKitty.OkMath;
@@ -12,11 +13,33 @@ namespace OKitty;
 
 public static class OkScript
 {
+    // Methods
+
+    public static bool IsMainThread()
+    {
+        return SDL.IsMainThread();
+    }
+
+    public static void RunOnMainThread(ODelegates.MainThreadAction action, Dictionary<string, object> data, bool waitComplete)
+    {
+        SDL.RunOnMainThread((IntPtr _) =>
+        {
+            action.Invoke(data);
+        }, IntPtr.Zero, waitComplete);
+    }
+    
     // Classes
+
+    public static class ODelegates
+    {
+        // Delegates
+
+        public delegate void MainThreadAction(Dictionary<string, object> data);
+    }
     
     public static class OInstanceEvents
     {
-        // Events
+        // Delegates
         
         public delegate void OnChildAdded(IOInstance child);
         public delegate void OnChildRemoved(IOInstance child);
@@ -24,7 +47,7 @@ public static class OkScript
     
     public static class OWindowEvents
     {
-        // Events
+        // Delegates
         
         public delegate void OnInitialization();
         public delegate void OnStart();
@@ -37,7 +60,7 @@ public static class OkScript
 
     public static class OKeyboardEvents
     {
-        // Events
+        // Delegates
         
         public delegate void OnInitialization();
         public delegate void OnKeyDown(OKeyboard.OKeyboardKey key, OKeyboard.OModifierKey modifier);
@@ -46,7 +69,7 @@ public static class OkScript
 
     public static class OMouseEvents
     {
-        // Events
+        // Delegates
 
         public delegate void OnInitialization();
         public delegate void OnButtonDown(OMouse.OMouseButton button, OVector2<float> position, byte clicks);

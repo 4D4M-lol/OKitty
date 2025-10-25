@@ -49,16 +49,141 @@ public static class OConfigs
 
 public static class OInfos
 {
+    // Enums
+    
+    public enum OPlatform
+    {
+        Unknown = -1,
+        AtariMiNt,
+        FreeBsd,
+        Haiku,
+        Linux,
+        MacOs,
+        NetBsd,
+        OpenBsd,
+        Os2,
+        QnxNeutrino,
+        Solaris,
+        Windows,
+        WinGdk
+    }
+
+    public enum OPlatformTheme
+    {
+        Unknown = -1,
+        Dark,
+        Light
+    }
+    
+    // Properties
+    
     public static readonly string Author = "4D4M-lol";
     public static readonly string Version = "1.0.0";
+
+    public static OPlatform Platform
+    {
+        get
+        {
+            Dictionary<string, OPlatform> platforms = new()
+            {
+                { "Atari MiNT", OPlatform.AtariMiNt },
+                { "FreeBSD", OPlatform.FreeBsd },
+                { "Haiku", OPlatform.Haiku },
+                { "Linux", OPlatform.Linux },
+                { "macOS", OPlatform.MacOs },
+                { "NetBSD", OPlatform.NetBsd },
+                { "OpenBSD", OPlatform.OpenBsd },
+                { "OS/2", OPlatform.Os2 },
+                { "QNX Neutrino", OPlatform.QnxNeutrino },
+                { "Solaris", OPlatform.Solaris },
+                { "Windows", OPlatform.Windows },
+                { "WinGdk", OPlatform.WinGdk }
+            };
+            bool found = platforms.TryGetValue(SDL.GetPlatform(), out OPlatform platform);
+
+            return found ? platform : OPlatform.Unknown;
+        }
+    }
+
+    public static OPlatformTheme PlatformTheme
+    {
+        get
+        {
+            SDL.SystemTheme theme = SDL.SystemTheme.Unknown;
+
+            if (SDL.IsMainThread())
+                theme = SDL.GetSystemTheme();
+            else
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    theme = SDL.GetSystemTheme();
+                }, IntPtr.Zero, false);
+            
+            return (OPlatformTheme)(theme - 1);
+        }
+    }
+}
+
+// Interfaces
+
+public interface IORenderer
+{
+    // Enums
+    
+    public enum ORendererType
+    {
+        Software,
+        OpenGl
+    }
+    
+    // Properties
+    
+    public string Name { get; }
+    public ORendererType Type { get; }
+    public OWindow? Window { get; set; }
+    
+    // Methods
+
+    public void ApplyConfig();
 }
 
 // Records
 
+public record OOpenGlRendererOptions
+{
+    // Properties
+
+    public OOpenGlRenderer.OOpenGlProfile? Profile { get; init; } = null;
+    public OOpenGlRenderer.OOpenGlContextResetNotification? ContextResetNotification { get; init; } = null;
+    public OOpenGlRenderer.OOpenGlContextFlag? ContextFlag { get; init; } = null;
+    public OOpenGlRenderer.OOpenGlContextReleaseBehaviour ContextReleaseBehavior { get; init; } = OOpenGlRenderer.OOpenGlContextReleaseBehaviour.Flush;
+    public int MajorVersion { get; init; } = 4;
+    public int MinorVersion { get; init; } = 6;
+    public int RedSize { get; init; } = 8;
+    public int GreenSize { get; init; } = 8;
+    public int BlueSize { get; init; } = 8;
+    public int AlphaSize { get; init; } = 8;
+    public int DepthSize { get; init; } = 24;
+    public int StencilSize { get; init; } = 8;
+    public int AccumRedSize { get; init; } = 0;
+    public int AccumGreenSize { get; init; } = 0;
+    public int AccumBlueSize { get; init; } = 0;
+    public int AccumAlphaSize { get; init; } = 0;
+    public int MultisampleBuffers { get; init; } = 1;
+    public int MultisampleSamples { get; init; } = 4;
+    public int BufferSize { get; init; } = 32;
+    public int SwapInterval { get; init; } = 1;
+    public bool AcceleratedVisual { get; init; } = true;
+    public bool DoubleBuffer { get; init; } = true;
+    public bool SrgbCapable { get; init; } = true;
+    public bool Stereo { get; init; } = false;
+}
+
 public record OWindowOptions
 {
     // Properties
-    
+
+    public IORenderer Renderer { get; init; } = new OSoftwareRenderer();
     public string Name { get; init; } = $"OKitty v{OInfos.Version} by {OInfos.Author}";
     public OVector2<int> Size { get; init; } = new OVector2<int>(800, 600);
     public OVector2<int> Position { get; init; } = new OVector2<int>(-1, -1);
@@ -87,6 +212,625 @@ public record OWindowOptions
 }
 
 // Classes
+
+public class OSoftwareRenderer : IORenderer
+{
+    // Properties and Fields
+
+    private OWindow? _window;
+    
+    public string Name => "OKitty";
+    public IORenderer.ORendererType Type => IORenderer.ORendererType.Software;
+
+    public OWindow? Window
+    {
+        get => _window;
+        set
+        {
+            if (_window is OWindow)
+            {
+                ODebugger.Warn("Renderer is already parented to a window.");
+                
+                return;
+            }
+
+            if (value?.Renderer != this)
+            {
+                ODebugger.Warn("The provided window has a different renderer.");
+                
+                return;
+            }
+
+            _window = value;
+        }
+    }
+    
+    // Methods and Functions
+
+    public OSoftwareRenderer()
+    {
+        
+    }
+
+    public void ApplyConfig()
+    {
+        
+    }
+
+    // To String
+
+    public override string ToString()
+    {
+        return $"[SoftwareRenderer]";
+    }
+}
+
+public class OOpenGlRenderer : IORenderer
+{
+    // Enums
+    
+    [Flags]
+    public enum OOpenGlContextFlag
+    {
+        Debug = 1 << 0,
+        ForwardCompatible = 1 << 1,
+        RobustAccess = 1 << 2,
+        Isolation = 1 << 3
+    }
+
+    public enum OOpenGlProfile
+    {
+        Core = 1 << 0,
+        Compatibility = 1 << 1,
+        Es = 1 << 2
+    }
+
+    public enum OOpenGlContextResetNotification
+    {
+        NoNotification,
+        LoseContext
+    }
+
+    public enum OOpenGlContextReleaseBehaviour
+    {
+        None,
+        Flush
+    }
+    
+    // Properties and Fields
+
+    private OWindow? _window;
+    private OOpenGlProfile? _profile;
+    private OOpenGlContextResetNotification? _contextResetNotification;
+    private OOpenGlContextFlag? _contextFlag;
+    private OOpenGlContextReleaseBehaviour _contextReleaseBehaviour;
+    private int _majorVersion;
+    private int _minorVersion;
+    private int _redSize;
+    private int _greenSize;
+    private int _blueSize;
+    private int _alphaSize;
+    private int _depthSize;
+    private int _stencilSize;
+    private int _accumRedSize;
+    private int _accumGreenSize;
+    private int _accumBlueSize;
+    private int _accumAlphaSize;
+    private int _multisampleBuffers;
+    private int _multisampleSamples;
+    private int _bufferSize;
+    private int _swapInterval;
+    public bool _acceleratedVisual;
+    public bool _doubleBuffer;
+    public bool _srgbCapable;
+    public bool _stereo;
+    
+    public string Name => "OpenGL";
+    public IORenderer.ORendererType Type => IORenderer.ORendererType.OpenGl;
+
+    public OWindow? Window
+    {
+        get => _window;
+        set
+        {
+            if (_window is OWindow)
+            {
+                ODebugger.Warn("Renderer is already parented to a window.");
+                
+                return;
+            }
+
+            if (value?.Renderer != this)
+            {
+                ODebugger.Warn("The provided window has a different renderer.");
+                
+                return;
+            }
+
+            _window = value;
+        }
+    }
+
+    public OOpenGlProfile? Profile
+    {
+        get => _profile;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _profile = value;
+        }
+    }
+    
+    public OOpenGlContextResetNotification? ContextResetNotification
+    {
+        get => _contextResetNotification;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _contextResetNotification = value;
+        }
+    }
+
+    public OOpenGlContextFlag? ContextFlag
+    {
+        get => _contextFlag;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _contextFlag = value;
+        }
+    }
+    
+    public OOpenGlContextReleaseBehaviour ContextReleaseBehaviour
+    {
+        get => _contextReleaseBehaviour;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _contextReleaseBehaviour = value;
+        }
+    }
+
+    public int MajorVersion
+    {
+        get => _majorVersion;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _majorVersion = value;
+        }
+    }
+
+    public int MinorVersion
+    {
+        get => _minorVersion;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _minorVersion = value;
+        }
+    }
+
+    public int RedSize
+    {
+        get => _redSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _redSize = value;
+        }
+    }
+
+    public int GreenSize
+    {
+        get => _greenSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _greenSize = value;
+        }
+    }
+
+    public int BlueSize
+    {
+        get => _blueSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _blueSize = value;
+        }
+    }
+
+    public int AlphaSize
+    {
+        get => _alphaSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _alphaSize = value;
+        }
+    }
+
+    public int DepthSize
+    {
+        get => _depthSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _depthSize = value;
+        }
+    }
+
+    public int StencilSize
+    {
+        get => _stencilSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _stencilSize = value;
+        }
+    }
+
+    public int AccumRedSize
+    {
+        get => _accumRedSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _accumRedSize = value;
+        }
+    }
+
+    public int AccumBlueSize
+    {
+        get => _accumBlueSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _accumBlueSize = value;
+        }
+    }
+
+    public int AccumGreenSize
+    {
+        get => _accumGreenSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _accumGreenSize = value;
+        }
+    }
+
+    public int AccumAlphaSize
+    {
+        get => _accumAlphaSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _accumAlphaSize = value;
+        }
+    }
+    
+    public int MultisampleBuffers
+    {
+        get => _multisampleBuffers;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _multisampleBuffers = value;
+        }
+    }
+    
+    public int MultisampleSamples
+    {
+        get => _multisampleSamples;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _multisampleSamples = value;
+        }
+    }
+    
+    public int BufferSize
+    {
+        get => _bufferSize;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _bufferSize = value;
+        }
+    }
+    
+    public int SwapInterval
+    {
+        get => _swapInterval;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _swapInterval = value;
+        }
+    }
+
+    public bool AcceleratedVisual
+    {
+        get => _acceleratedVisual;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _acceleratedVisual = value;
+        }
+    }
+
+    public bool DoubleBuffer
+    {
+        get => _doubleBuffer;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _doubleBuffer = value;
+        }
+    }
+
+    public bool SrgbCapable
+    {
+        get => _srgbCapable;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _srgbCapable = value;
+        }
+    }
+
+    public bool Stereo
+    {
+        get => _stereo;
+        set
+        {
+            if (_window?.Initialized ?? false)
+            {
+                ODebugger.Warn("OpenGL properties can only be set before the window was initialized.");
+                
+                return;
+            }
+
+            _stereo = value;
+        }
+    }
+    
+    // Methods and Functions
+
+    public OOpenGlRenderer(OOpenGlRendererOptions options)
+    {
+        _profile = options.Profile;
+        _contextResetNotification = options.ContextResetNotification;
+        _contextFlag = options.ContextFlag;
+        _contextReleaseBehaviour = options.ContextReleaseBehavior;
+        _majorVersion = options.MajorVersion;
+        _minorVersion = options.MinorVersion;
+        _redSize = options.RedSize;
+        _greenSize = options.GreenSize;
+        _blueSize = options.BlueSize;
+        _alphaSize = options.AlphaSize;
+        _depthSize = options.DepthSize;
+        _stencilSize = options.StencilSize;
+        _accumRedSize = options.AccumRedSize;
+        _accumGreenSize = options.AccumGreenSize;
+        _accumBlueSize = options.AccumBlueSize;
+        _accumAlphaSize = options.AccumAlphaSize;
+        _multisampleBuffers = options.MultisampleBuffers;
+        _multisampleSamples = options.MultisampleSamples;
+        _bufferSize = options.BufferSize;
+        _swapInterval = options.SwapInterval;
+        _acceleratedVisual = options.AcceleratedVisual;
+        _doubleBuffer = options.DoubleBuffer;
+        _srgbCapable = options.SrgbCapable;
+        _stereo = options.Stereo;
+    }
+
+    public void ApplyConfig()
+    {
+        if (_window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window before applying config.");
+            
+            return;
+        }
+
+        if (_window.Initialized)
+        {
+            ODebugger.Warn("Renderer config can not be applied after the window was initialized.");
+            
+            return;
+        }
+
+        if (SDL.IsMainThread())
+            Configure();
+        else
+            SDL.RunOnMainThread((IntPtr _) =>
+            {
+                Configure();
+            }, IntPtr.Zero, false);
+    }
+
+    private void Configure()
+    {
+        if (_profile is not null)
+            SDL.GLSetAttribute(SDL.GLAttr.ContextProfileMask, (int)_profile);
+        
+        if (_contextFlag is not null)
+            SDL.GLSetAttribute(SDL.GLAttr.ContextFlags, (int)_contextFlag);
+        
+        if (_contextResetNotification is not null)
+            SDL.GLSetAttribute(SDL.GLAttr.ContextResetNotification, (int)_contextResetNotification);
+
+        SDL.GLSetAttribute(SDL.GLAttr.ContextReleaseBehavior, (int)_contextReleaseBehaviour);
+        SDL.GLSetAttribute(SDL.GLAttr.ContextMajorVersion, _majorVersion);
+        SDL.GLSetAttribute(SDL.GLAttr.ContextMinorVersion, _minorVersion);
+        SDL.GLSetAttribute(SDL.GLAttr.RedSize, _redSize);
+        SDL.GLSetAttribute(SDL.GLAttr.GreenSize, _greenSize);
+        SDL.GLSetAttribute(SDL.GLAttr.BlueSize, _blueSize);
+        SDL.GLSetAttribute(SDL.GLAttr.AlphaSize, _alphaSize);
+        SDL.GLSetAttribute(SDL.GLAttr.DepthSize, _depthSize);
+        SDL.GLSetAttribute(SDL.GLAttr.StencilSize, _stencilSize);
+        SDL.GLSetAttribute(SDL.GLAttr.AccumRedSize, _accumRedSize);
+        SDL.GLSetAttribute(SDL.GLAttr.AccumGreenSize, _accumGreenSize);
+        SDL.GLSetAttribute(SDL.GLAttr.AccumBlueSize, _accumBlueSize);
+        SDL.GLSetAttribute(SDL.GLAttr.AccumAlphaSize, _accumAlphaSize);
+        SDL.GLSetAttribute(SDL.GLAttr.MultisampleBuffers, _multisampleBuffers);
+        SDL.GLSetAttribute(SDL.GLAttr.MultisampleSamples, _multisampleSamples);
+        SDL.GLSetAttribute(SDL.GLAttr.BufferSize, _bufferSize);
+        SDL.GLSetSwapInterval(_swapInterval);
+        SDL.GLSetAttribute(SDL.GLAttr.AcceleratedVisual, _acceleratedVisual ? 1 : 0);
+        SDL.GLSetAttribute(SDL.GLAttr.DoubleBuffer, _doubleBuffer ? 1 : 0);
+        SDL.GLSetAttribute(SDL.GLAttr.FrameBufferSRGBCapable, _srgbCapable ? 1 : 0);
+        SDL.GLSetAttribute(SDL.GLAttr.Stereo, _stereo ? 1 : 0);
+    }
+    
+    // To String
+
+    public override string ToString()
+    {
+        return $"[OpenGLRenderer]";
+    }
+}
 
 public class OWindow : IOPrototype
 {
@@ -117,9 +861,10 @@ public class OWindow : IOPrototype
     
     // Properties and Fields
 
-    private IntPtr _window;
-    private IntPtr _renderer;
+    private IntPtr _sdlWindow;
+    private IntPtr _sdlRenderer;
     private SDL.EventFilter _filter;
+    private IORenderer _renderer;
     private OKeyboard _keyboard;
     private OMouse _mouse;
     private OStorage _storage;
@@ -134,21 +879,22 @@ public class OWindow : IOPrototype
     private bool _topmost;
     private bool _focusable;
 
-    public IntPtr WindowHandle => _window;
-    public IntPtr RendererHandle => _renderer;
+    public IntPtr WindowHandle => _sdlWindow;
+    public IntPtr RendererHandle => _sdlRenderer;
+    public IORenderer Renderer => _renderer;
     public OKeyboard Keyboard => _keyboard;
     public OMouse Mouse => _mouse;
     public OStorage Storage => _storage;
     public OScenes Scenes => _scenes;
     public string Icon => "󰍹";
     public string InstanceName => "OWindow";
-    public bool Initialized { get; private set; } = false;
-    public bool Running { get; private set; } = false;
-    public bool Visible { get; private set; } = false;
-    public bool RenderWhileHidden { get; set; } = false;
-    public int Delay { get; set; } = 16;
-    public OWindowCloseOperation CloseOperation { get; set; } = OWindowCloseOperation.Close;
-    public OColor BackgroundColor { get; set; } = OColor.White;
+    public bool Initialized { get; private set; }
+    public bool Running { get; private set; }
+    public bool Visible { get; private set; }
+    public bool RenderWhileHidden { get; set; }
+    public int Delay { get; set; }
+    public OWindowCloseOperation CloseOperation { get; set; }
+    public OColor BackgroundColor { get; set; }
 
     public string Name
     {
@@ -161,11 +907,11 @@ public class OWindow : IOPrototype
                 return;
             
             if (SDL.IsMainThread())
-                SDL.SetWindowTitle(_window, value);
+                SDL.SetWindowTitle(_sdlWindow, value);
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.SetWindowTitle(_window, value);
+                    SDL.SetWindowTitle(_sdlWindow, value);
                 }, IntPtr.Zero, false);
         }
     }
@@ -181,11 +927,11 @@ public class OWindow : IOPrototype
                 return;
 
             if (SDL.IsMainThread())
-                SDL.SetWindowSize(_window, value.X, value.Y);
+                SDL.SetWindowSize(_sdlWindow, value.X, value.Y);
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.SetWindowSize(_window, value.X, value.Y);
+                    SDL.SetWindowSize(_sdlWindow, value.X, value.Y);
                 }, IntPtr.Zero, false);
         }
     }
@@ -201,11 +947,11 @@ public class OWindow : IOPrototype
                 return;
 
             if (SDL.IsMainThread())
-                SDL.SetWindowPosition(_window, value.X, value.Y);
+                SDL.SetWindowPosition(_sdlWindow, value.X, value.Y);
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.SetWindowPosition(_window, value.X, value.Y);
+                    SDL.SetWindowPosition(_sdlWindow, value.X, value.Y);
                 }, IntPtr.Zero, false);
         }
     }
@@ -224,22 +970,22 @@ public class OWindow : IOPrototype
                 switch (value)
                 {
                     case OWindowState.Normal:
-                        SDL.SetWindowFullscreen(_window, false);
-                        SDL.RestoreWindow(_window);
+                        SDL.SetWindowFullscreen(_sdlWindow, false);
+                        SDL.RestoreWindow(_sdlWindow);
 
                         break;
                     case OWindowState.Minimized:
-                        SDL.SetWindowFullscreen(_window, false);
-                        SDL.MinimizeWindow(_window);
+                        SDL.SetWindowFullscreen(_sdlWindow, false);
+                        SDL.MinimizeWindow(_sdlWindow);
 
                         break;
                     case OWindowState.Maximized:
-                        SDL.SetWindowFullscreen(_window, false);
-                        SDL.MaximizeWindow(_window);
+                        SDL.SetWindowFullscreen(_sdlWindow, false);
+                        SDL.MaximizeWindow(_sdlWindow);
 
                         break;
                     case OWindowState.Fullscreen:
-                        SDL.SetWindowFullscreen(_window, true);
+                        SDL.SetWindowFullscreen(_sdlWindow, true);
 
                         break;
                 }
@@ -249,22 +995,22 @@ public class OWindow : IOPrototype
                     switch (value)
                     {
                         case OWindowState.Normal:
-                            SDL.SetWindowFullscreen(_window, false);
-                            SDL.RestoreWindow(_window);
+                            SDL.SetWindowFullscreen(_sdlWindow, false);
+                            SDL.RestoreWindow(_sdlWindow);
                         
                             break;
                         case OWindowState.Minimized:
-                            SDL.SetWindowFullscreen(_window, false);
-                            SDL.MinimizeWindow(_window);
+                            SDL.SetWindowFullscreen(_sdlWindow, false);
+                            SDL.MinimizeWindow(_sdlWindow);
                         
                             break;
                         case OWindowState.Maximized:
-                            SDL.SetWindowFullscreen(_window, false);
-                            SDL.MaximizeWindow(_window);
+                            SDL.SetWindowFullscreen(_sdlWindow, false);
+                            SDL.MaximizeWindow(_sdlWindow);
                         
                             break;
                         case OWindowState.Fullscreen:
-                            SDL.SetWindowFullscreen(_window, true);
+                            SDL.SetWindowFullscreen(_sdlWindow, true);
                         
                             break;
                     }
@@ -288,17 +1034,17 @@ public class OWindow : IOPrototype
                 switch (value)
                 {
                     case OWindowBorder.None:
-                        SDL.SetWindowBordered(_window, false);
+                        SDL.SetWindowBordered(_sdlWindow, false);
                         
                         break;
                     case OWindowBorder.Fixed:
-                        SDL.SetWindowBordered(_window, true);
-                        SDL.SetWindowResizable(_window, false);
+                        SDL.SetWindowBordered(_sdlWindow, true);
+                        SDL.SetWindowResizable(_sdlWindow, false);
                         
                         break;
                     case OWindowBorder.Resizable:
-                        SDL.SetWindowBordered(_window, true);
-                        SDL.SetWindowResizable(_window, true);
+                        SDL.SetWindowBordered(_sdlWindow, true);
+                        SDL.SetWindowResizable(_sdlWindow, true);
                         
                         break;
                 }
@@ -308,17 +1054,17 @@ public class OWindow : IOPrototype
                     switch (value)
                     {
                         case OWindowBorder.None:
-                            SDL.SetWindowBordered(_window, false);
+                            SDL.SetWindowBordered(_sdlWindow, false);
                         
                             break;
                         case OWindowBorder.Fixed:
-                            SDL.SetWindowBordered(_window, true);
-                            SDL.SetWindowResizable(_window, false);
+                            SDL.SetWindowBordered(_sdlWindow, true);
+                            SDL.SetWindowResizable(_sdlWindow, false);
                         
                             break;
                         case OWindowBorder.Resizable:
-                            SDL.SetWindowBordered(_window, true);
-                            SDL.SetWindowResizable(_window, true);
+                            SDL.SetWindowBordered(_sdlWindow, true);
+                            SDL.SetWindowResizable(_sdlWindow, true);
                         
                             break;
                     }
@@ -337,11 +1083,11 @@ public class OWindow : IOPrototype
                 return;
 
             if (SDL.IsMainThread())
-                SDL.SetWindowOpacity(_window, _opacity);
+                SDL.SetWindowOpacity(_sdlWindow, _opacity);
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.SetWindowOpacity(_window, _opacity);
+                    SDL.SetWindowOpacity(_sdlWindow, _opacity);
                 }, IntPtr.Zero, false);
         }
     }
@@ -357,11 +1103,11 @@ public class OWindow : IOPrototype
                 return;
 
             if (SDL.IsMainThread())
-                SDL.SetWindowAlwaysOnTop(_window, value);
+                SDL.SetWindowAlwaysOnTop(_sdlWindow, value);
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.SetWindowAlwaysOnTop(_window, value);
+                    SDL.SetWindowAlwaysOnTop(_sdlWindow, value);
                 }, IntPtr.Zero, false);
         }
     }
@@ -377,11 +1123,11 @@ public class OWindow : IOPrototype
                 return;
 
             if (SDL.IsMainThread())
-                SDL.SetWindowFocusable(_window, value);
+                SDL.SetWindowFocusable(_sdlWindow, value);
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
-                    SDL.SetWindowFocusable(_window, value);
+                    SDL.SetWindowFocusable(_sdlWindow, value);
                 }, IntPtr.Zero, false);
         }
     }
@@ -408,15 +1154,26 @@ public class OWindow : IOPrototype
         _name = options.Name;
         _size = options.Size;
         _position = options.Position;
-        CloseOperation = options.CloseOperation;
         _state = options.State;
         _border = options.Border;
-        BackgroundColor = options.BackgroundColor;
-        Delay = options.Delay;
         _opacity = options.Opacity;
-        RenderWhileHidden = options.RenderWhileHidden;
         _topmost = options.Topmost;
         _focusable = options.Focusable;
+        RenderWhileHidden = options.RenderWhileHidden;
+        CloseOperation = options.CloseOperation;
+        Delay = options.Delay;
+        BackgroundColor = options.BackgroundColor;
+
+        if (options.Renderer.Window is OWindow)
+        {
+            ODebugger.Warn("The provided renderer is already parented into another window.");
+
+            return;
+        }
+        
+        _renderer = options.Renderer;
+
+        _renderer.Window = this;
 
         OScene main = new OScene(null, "Main", true);
 
@@ -467,15 +1224,15 @@ public class OWindow : IOPrototype
 
     public void Dispose()
     {
-        if (_renderer != IntPtr.Zero)
+        if (_sdlRenderer != IntPtr.Zero)
         {
-            SDL.DestroyRenderer(_renderer);
+            SDL.DestroyRenderer(_sdlRenderer);
             ODebugger.Inform("SDL renderer destroyed.\n");
         }
         
-        if (_window != IntPtr.Zero)
+        if (_sdlWindow != IntPtr.Zero)
         {
-            SDL.DestroyWindow(_window);
+            SDL.DestroyWindow(_sdlWindow);
             ODebugger.Inform("SDL window destroyed.\n");
         }
         
@@ -540,11 +1297,11 @@ public class OWindow : IOPrototype
         }
         
         if (SDL.IsMainThread())
-            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.ButtonsLeftToRight, title, message, _window);
+            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.ButtonsLeftToRight, title, message, _sdlWindow);
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.ButtonsLeftToRight, title, message, _window);
+                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.ButtonsLeftToRight, title, message, _sdlWindow);
             }, IntPtr.Zero, true);
     }
 
@@ -558,11 +1315,11 @@ public class OWindow : IOPrototype
         }
         
         if (SDL.IsMainThread())
-            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Information, title, message, _window);
+            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Information, title, message, _sdlWindow);
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Information, title, message, _window);
+                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Information, title, message, _sdlWindow);
             }, IntPtr.Zero, true);
     }
 
@@ -576,11 +1333,11 @@ public class OWindow : IOPrototype
         }
         
         if (SDL.IsMainThread())
-            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Warning, title, message, _window);
+            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Warning, title, message, _sdlWindow);
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Warning, title, message, _window);
+                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Warning, title, message, _sdlWindow);
             }, IntPtr.Zero, true);
     }
 
@@ -594,11 +1351,11 @@ public class OWindow : IOPrototype
         }
         
         if (SDL.IsMainThread())
-            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Error, title, message, _window);
+            SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Error, title, message, _sdlWindow);
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Error, title, message, _window);
+                SDL.ShowSimpleMessageBox(SDL.MessageBoxFlags.Error, title, message, _sdlWindow);
             }, IntPtr.Zero, true);
     }
 
@@ -614,11 +1371,11 @@ public class OWindow : IOPrototype
         Visible = false;
 
         if (SDL.IsMainThread())
-            SDL.HideWindow(_window);
+            SDL.HideWindow(_sdlWindow);
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.HideWindow(_window);
+                SDL.HideWindow(_sdlWindow);
             }, IntPtr.Zero, true);
         
         ODebugger.Inform($"Window \"{Name}\" hid.");
@@ -636,11 +1393,11 @@ public class OWindow : IOPrototype
         Visible = true;
 
         if (SDL.IsMainThread())
-            SDL.ShowWindow(_window);
+            SDL.ShowWindow(_sdlWindow);
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.ShowWindow(_window);
+                SDL.ShowWindow(_sdlWindow);
             }, IntPtr.Zero, true);
         
         ODebugger.Inform($"Window \"{Name}\" shown.");
@@ -666,14 +1423,14 @@ public class OWindow : IOPrototype
         green = (byte)(green * opacity);
         blue = (byte)(blue * opacity);
         
-        SDL.SetRenderDrawColor(_renderer, red, green, blue, alpha);
-        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.None);
-        SDL.RenderClear(_renderer);
-        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
+        SDL.SetRenderDrawColor(_sdlRenderer, red, green, blue, alpha);
+        SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.None);
+        SDL.RenderClear(_sdlRenderer);
+        SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.Blend);
         
         
         
-        SDL.RenderPresent(_renderer);
+        SDL.RenderPresent(_sdlRenderer);
         _stopwatch.Stop();
         OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
         _stopwatch.Reset();
@@ -683,7 +1440,7 @@ public class OWindow : IOPrototype
 
     private bool Filter(IntPtr _, ref SDL.Event ev)
     {
-        if (ev.Window.WindowID != SDL.GetWindowID(_window) || !Initialized)
+        if (ev.Window.WindowID != SDL.GetWindowID(_sdlWindow) || !Initialized)
             return false;
 
         switch (ev.Type)
@@ -708,7 +1465,7 @@ public class OWindow : IOPrototype
             case (uint)SDL.EventType.WindowResized:
             case (uint)SDL.EventType.WindowPixelSizeChanged:
                 Render();
-                SDL.GetWindowSize(_window, out int width, out int height);
+                SDL.GetWindowSize(_sdlWindow, out int width, out int height);
 
                 if (width == _size.X && height == _size.Y)
                     break;
@@ -720,7 +1477,7 @@ public class OWindow : IOPrototype
                 break;
             case (uint)SDL.EventType.WindowMoved:
                 Render();
-                SDL.GetWindowPosition(_window, out int x, out int y);
+                SDL.GetWindowPosition(_sdlWindow, out int x, out int y);
 
                 if (x == _position.X && y == _position.Y)
                     break;
@@ -743,13 +1500,16 @@ public class OWindow : IOPrototype
             
             return;
         }
+
+        SDL.WindowFlags flags = SDL.WindowFlags.Resizable | SDL.WindowFlags.Transparent;
+
+        if (_renderer.Type == IORenderer.ORendererType.OpenGl)
+            flags |= SDL.WindowFlags.OpenGL;
         
-        SDL.CreateWindowAndRenderer(
-            _name, _size.X, _size.Y, SDL.WindowFlags.Resizable | SDL.WindowFlags.Transparent,
-            out _window, out _renderer
-        );
+        _renderer.ApplyConfig();
+        SDL.CreateWindowAndRenderer(_name, _size.X, _size.Y, flags, out _sdlWindow, out _sdlRenderer);
         
-        if (_window == IntPtr.Zero || _renderer == IntPtr.Zero)
+        if (_sdlWindow == IntPtr.Zero || _sdlRenderer == IntPtr.Zero)
         {
             ODebugger.Throw(new ExternalException($"Failed to create SDL window and/or renderer: {SDL.GetError()}.\n"));
             
@@ -764,29 +1524,29 @@ public class OWindow : IOPrototype
         }
 
         if (_position.X == -1 && _position.Y == -1)
-            SDL.SetWindowPosition(_window, (int)SDL.WindowPosCentered(), (int)SDL.WindowPosCentered());
+            SDL.SetWindowPosition(_sdlWindow, (int)SDL.WindowPosCentered(), (int)SDL.WindowPosCentered());
         else
-            SDL.SetWindowPosition(_window, _position.X, _position.Y);
+            SDL.SetWindowPosition(_sdlWindow, _position.X, _position.Y);
         
         switch (_state)
         {
             case OWindowState.Normal:
-                SDL.SetWindowFullscreen(_window, false);
-                SDL.RestoreWindow(_window);
+                SDL.SetWindowFullscreen(_sdlWindow, false);
+                SDL.RestoreWindow(_sdlWindow);
 
                 break;
             case OWindowState.Minimized:
-                SDL.SetWindowFullscreen(_window, false);
-                SDL.MinimizeWindow(_window);
+                SDL.SetWindowFullscreen(_sdlWindow, false);
+                SDL.MinimizeWindow(_sdlWindow);
 
                 break;
             case OWindowState.Maximized:
-                SDL.SetWindowFullscreen(_window, false);
-                SDL.MaximizeWindow(_window);
+                SDL.SetWindowFullscreen(_sdlWindow, false);
+                SDL.MaximizeWindow(_sdlWindow);
 
                 break;
             case OWindowState.Fullscreen:
-                SDL.SetWindowFullscreen(_window, true);
+                SDL.SetWindowFullscreen(_sdlWindow, true);
 
                 break;
         }
@@ -794,24 +1554,24 @@ public class OWindow : IOPrototype
         switch (_border)
         {
             case OWindowBorder.None:
-                SDL.SetWindowBordered(_window, false);
+                SDL.SetWindowBordered(_sdlWindow, false);
                     
                 break;
             case OWindowBorder.Fixed:
-                SDL.SetWindowBordered(_window, true);
-                SDL.SetWindowResizable(_window, false);
+                SDL.SetWindowBordered(_sdlWindow, true);
+                SDL.SetWindowResizable(_sdlWindow, false);
                     
                 break;
             case OWindowBorder.Resizable:
-                SDL.SetWindowBordered(_window, true);
-                SDL.SetWindowResizable(_window, true);
+                SDL.SetWindowBordered(_sdlWindow, true);
+                SDL.SetWindowResizable(_sdlWindow, true);
                     
                 break;
         }
 
-        SDL.SetWindowOpacity(_window, _opacity);
-        SDL.SetWindowAlwaysOnTop(_window, _topmost);
-        SDL.SetWindowFocusable(_window, _focusable);
+        SDL.SetWindowOpacity(_sdlWindow, _opacity);
+        SDL.SetWindowAlwaysOnTop(_sdlWindow, _topmost);
+        SDL.SetWindowFocusable(_sdlWindow, _focusable);
 
         Initialized = true;
         
