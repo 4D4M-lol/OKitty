@@ -142,9 +142,111 @@ public interface IORenderer
     public ORendererType Type { get; }
     public OWindow? Window { get; set; }
     
-    // Methods
+    public OColor? Color
+    {
+        get
+        {
+            if (Window is null)
+                return null;
+            
+            (byte alpha, byte red, byte green, byte blue) = (0, 0, 0, 0);
 
+            if (SDL.IsMainThread())
+                SDL.GetRenderDrawColor(Window.RendererHandle, out red, out green, out blue, out alpha);
+            else
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    SDL.GetRenderDrawColor(Window.RendererHandle, out red, out green, out blue, out alpha);
+                }, IntPtr.Zero, false);
+
+            return OColor.FromArgb(alpha, red, green, blue);
+        }
+        set
+        {
+            if (Window is null)
+            {
+                ODebugger.Warn("Renderer must be parented to a window before its color is changed.");
+                
+                return;
+            }
+
+            value = value ?? OColor.Transparent;
+            
+            if (SDL.IsMainThread())
+                SDL.SetRenderDrawColor(Window.RendererHandle, value.Value.Argb.Red, value.Value.Argb.Green, value.Value.Argb.Blue, value.Value.Argb.Alpha);
+            else
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    SDL.SetRenderDrawColor(Window.RendererHandle, value.Value.Argb.Red, value.Value.Argb.Green, value.Value.Argb.Blue, value.Value.Argb.Alpha);
+                }, IntPtr.Zero, false);
+        }
+    }
+    
+    // Methods
+    
     public void ApplyConfig();
+
+    public void RenderPoint(OVector2<float> position, OColor color)
+    {
+        if (Window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window to render something.");
+
+            return;
+        }
+
+        if (SDL.IsMainThread())
+        {
+            SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+            SDL.RenderPoint(Window.RendererHandle, position.X, position.Y);
+        }
+        else
+            SDL.RunOnMainThread((IntPtr _) =>
+            {
+                SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+                SDL.RenderPoint(Window.RendererHandle, position.X, position.Y);
+            }, IntPtr.Zero, false);
+    }
+
+    public void RenderLine(OVector2<float> start, OVector2<float> end, OColor color)
+    {
+        if (Window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window to render something.");
+
+            return;
+        }
+
+        if (SDL.IsMainThread())
+        {
+            SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+            SDL.RenderLine(Window.RendererHandle, start.X, start.Y, end.X, end.Y);
+        }
+        else
+            SDL.RunOnMainThread((IntPtr _) =>
+            {
+                SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+                SDL.RenderLine(Window.RendererHandle, start.X, start.Y, end.X, end.Y);
+            }, IntPtr.Zero, false);
+    }
+
+    public void Present()
+    {
+        if (Window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window to be presented.");
+
+            return;
+        }
+
+        if (SDL.IsMainThread())
+            SDL.RenderPresent(Window.RendererHandle);
+        else
+            SDL.RunOnMainThread((IntPtr _) =>
+            {
+                SDL.RenderPresent(Window.RendererHandle);
+            }, IntPtr.Zero, false);
+    }
 }
 
 // Records
@@ -193,6 +295,7 @@ public record OWindowOptions
     public OColor BackgroundColor { get; init; } = OColor.White;
     public int Delay { get; init; } = 16;
     public float Opacity { get; init; } = 1;
+    public bool PresentAfterCallback { get; init; } = false;
     public bool RenderWhileHidden { get; init; } = false;
     public bool Topmost { get; init; } = false;
     public bool Focusable { get; init; } = true;
@@ -891,6 +994,7 @@ public class OWindow : IOPrototype
     public bool Initialized { get; private set; }
     public bool Running { get; private set; }
     public bool Visible { get; private set; }
+    public bool PresentAfterCallback { get; set; }
     public bool RenderWhileHidden { get; set; }
     public int Delay { get; set; }
     public OWindowCloseOperation CloseOperation { get; set; }
@@ -1160,6 +1264,7 @@ public class OWindow : IOPrototype
         _opacity = options.Opacity;
         _topmost = options.Topmost;
         _focusable = options.Focusable;
+        PresentAfterCallback = options.PresentAfterCallback;
         RenderWhileHidden = options.RenderWhileHidden;
         CloseOperation = options.CloseOperation;
         Delay = options.Delay;
@@ -1194,6 +1299,7 @@ public class OWindow : IOPrototype
             BackgroundColor = BackgroundColor,
             Delay = Delay,
             Opacity = _opacity,
+            PresentAfterCallback = PresentAfterCallback,
             RenderWhileHidden = RenderWhileHidden,
             Topmost = _topmost,
             Focusable = _focusable
@@ -1449,13 +1555,16 @@ public class OWindow : IOPrototype
         SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.None);
         SDL.RenderClear(_sdlRenderer);
         SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.Blend);
+
+        if (!PresentAfterCallback)
+            SDL.RenderPresent(_sdlRenderer);
         
-        
-        
-        SDL.RenderPresent(_sdlRenderer);
         _stopwatch.Stop();
         OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
         _stopwatch.Reset();
+
+        if (PresentAfterCallback)
+            SDL.RenderPresent(_sdlRenderer);
     
         return null;
     }

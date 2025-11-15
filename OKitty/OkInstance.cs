@@ -162,6 +162,7 @@ public static class OkInstance
 
     public record OEdgeInfo
     {
+        // 
         // Properties
 
         public required OVector3<float> Start { get; init; }
