@@ -910,7 +910,19 @@ public static class OkInstance
 
         public ORenderInfo? Render()
         {
-            List<OFaceInfo> result = new List<OFaceInfo>();
+            if (_parent is not OScenes scenes)
+                return null;
+
+            ReadOnlyCollection<OScene> siblings = scenes.GetScenes();
+            
+            if (!siblings.Contains(this))
+                return null;
+
+            if (scenes.Active != siblings.IndexOf(this))
+                return null;
+            
+            ORenderInfo result = new ORenderInfo();
+            List<OFaceInfo> faces = new List<OFaceInfo>();
 
             foreach (IOInstance child in _children)
             {
@@ -919,10 +931,12 @@ public static class OkInstance
                 if (info is null)
                     continue;
                 
-                result.AddRange(info.Faces);
+                faces.AddRange(info.Faces);
             }
             
+            result.Faces.AddRange(faces);
             
+            return result;
         }
 
         // To String

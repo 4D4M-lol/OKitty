@@ -436,6 +436,23 @@ public static class OkStyling
         {
             
         }
+        
+        public OColor(double alpha, double red, double green, double blue)
+        {
+            alpha = Math.Clamp(alpha, 0.0, 1.0);
+            red   = Math.Clamp(red,   0.0, 1.0);
+            green = Math.Clamp(green, 0.0, 1.0);
+            blue  = Math.Clamp(blue,  0.0, 1.0);
+
+            byte a = (byte)(alpha * 255.0);
+            byte r = (byte)(red   * 255.0);
+            byte g = (byte)(green * 255.0);
+            byte b = (byte)(blue  * 255.0);
+            uint hex = ((uint)a << 24) | ((uint)r << 16) | ((uint)g << 8) | b;
+
+            this = new OColor(hex);
+        }
+
 
         public static OColor FromArgb(byte alpha, byte red, byte green, byte blue)
         {

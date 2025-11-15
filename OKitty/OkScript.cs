@@ -13,6 +13,11 @@ namespace OKitty;
 
 public static class OkScript
 {
+    // Properties
+
+    public static ulong Ticks => SDL.GetTicks();
+    public static ulong TicksNs => SDL.GetTicksNS();
+    
     // Methods
 
     public static bool IsMainThread()
@@ -52,7 +57,8 @@ public static class OkScript
         public delegate void OnInitialization();
         public delegate void OnStart();
         public delegate void OnUpdate(double deltaTime);
-        public delegate void OnEnd(bool closed);
+        public delegate void OnEnd(bool closedByUser);
+        public delegate void OnDispose();
         public delegate void OnStateChanged(OWindow.OWindowState state);
         public delegate void OnResize(OVector2<int> size);
         public delegate void OnMove(OVector2<int> position);

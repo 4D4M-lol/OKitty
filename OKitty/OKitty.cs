@@ -1138,6 +1138,7 @@ public class OWindow : IOPrototype
     public event OWindowEvents.OnStart? OnStart; 
     public event OWindowEvents.OnUpdate? OnUpdate; 
     public event OWindowEvents.OnEnd? OnEnd;
+    public event OWindowEvents.OnDispose? OnDispose;
     public event OWindowEvents.OnStateChanged? OnStateChanged;
     public event OWindowEvents.OnResize? OnResize;
     public event OWindowEvents.OnMove? OnMove;
@@ -1241,6 +1242,8 @@ public class OWindow : IOPrototype
 
         Initialized = false;
         Running = false;
+        
+        OnDispose?.Invoke();
     }
 
     public void Initialize()
@@ -1285,6 +1288,25 @@ public class OWindow : IOPrototype
                 SDL.WaitEventTimeout(out SDL.Event _, Delay);
             }
         }, IntPtr.Zero, true);
+    }
+
+    public void Stop(bool dispose = true)
+    {
+        if (!Initialized)
+        {
+            ODebugger.Warn("Window must be initalized first befor being stopped.\n");
+
+            return;
+        }
+
+        Initialized = false;
+        Running = false;
+        Visible = false;
+        
+        OnEnd?.Invoke(false);
+        
+        if (dispose)
+            Dispose();
     }
 
     public void Log(string title = "Log", string message = "This is a message!")
@@ -1458,7 +1480,8 @@ public class OWindow : IOPrototype
                     // TODO: Create confirmation dialog.
                 }
         
-                OnEnd?.Invoke(!Running);
+                if (!Running)
+                    OnEnd?.Invoke(true);
 
                 break;
             case (uint)SDL.EventType.WindowExposed:
