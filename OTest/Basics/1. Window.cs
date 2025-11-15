@@ -48,7 +48,7 @@ public static class Window
                 : "Window ended (stopped programmatically).\n");
         };
 
-        // Called right before Dispose() cleans up resources
+        // Called after Dispose(), cleans up resources
         
         window.OnDispose += () =>
         {
