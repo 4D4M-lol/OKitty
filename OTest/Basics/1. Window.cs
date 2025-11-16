@@ -14,9 +14,7 @@ public static class Window
         
         OWindowOptions options = new OWindowOptions()
         {
-            Name = "Window",
-            BackgroundColor = OkStyling.OColor.Black,
-            PresentAfterCallback = true
+            Name = "Window"
         };
 
         // Create the window using the given options
@@ -39,12 +37,6 @@ public static class Window
         window.OnUpdate += (double deltaTime) =>
         {
             ODebugger.Log($"Delta time: {deltaTime} ms\n");
-            
-            window.Renderer.RenderPoint(new OkMath.OVector2<float>(400, 300), OkStyling.OColor.White);
-            window.Renderer.RenderLine(new OkMath.OVector2<float>(100,  100), new OkMath.OVector2<float>(100, 300), OkStyling.OColor.White);
-            window.Renderer.RenderLine(new OkMath.OVector2<float>(100,  300), new OkMath.OVector2<float>(250, 300), OkStyling.OColor.White);
-            window.Renderer.RenderLine(new OkMath.OVector2<float>(100,  100), new OkMath.OVector2<float>(250, 300), OkStyling.OColor.White);
-            window.Renderer.Present();
         };
 
         // Called when the window is about to stop

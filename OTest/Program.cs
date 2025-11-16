@@ -28,6 +28,18 @@ class Program
                     Basics.Rainbow.Start();
                     
                     break;
+                case "stars":
+                    // Run the animated stars example.
+                
+                    Basics.Stars.Start();
+                    
+                    break;
+                case "house":
+                    // Run the animated house example.
+                
+                    Basics.House.Start();
+                    
+                    break;
                 default:
                     // Unknown argument, fall back to default example.
                     

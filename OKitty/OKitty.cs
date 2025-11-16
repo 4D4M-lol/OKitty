@@ -197,15 +197,27 @@ public interface IORenderer
 
         if (SDL.IsMainThread())
         {
-            SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+            SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Alpha);
             SDL.RenderPoint(Window.RendererHandle, position.X, position.Y);
         }
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+                SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Alpha);
                 SDL.RenderPoint(Window.RendererHandle, position.X, position.Y);
             }, IntPtr.Zero, false);
+    }
+
+    public void RenderPoints(ICollection<OVector2<float>> points, OColor color)
+    {
+        foreach (OVector2<float> point in points)
+            RenderPoint(point, color);
+    }
+
+    public void RenderPoints(ICollection<(OVector2<float> position, OColor color)> points)
+    {
+        foreach ((OVector2<float> position, OColor color) in points)
+            RenderPoint(position, color);
     }
 
     public void RenderLine(OVector2<float> start, OVector2<float> end, OColor color)
@@ -219,15 +231,38 @@ public interface IORenderer
 
         if (SDL.IsMainThread())
         {
-            SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+            SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Alpha);
             SDL.RenderLine(Window.RendererHandle, start.X, start.Y, end.X, end.Y);
         }
         else
             SDL.RunOnMainThread((IntPtr _) =>
             {
-                SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Blue);
+                SDL.SetRenderDrawColor(Window.RendererHandle, color.Argb.Red, color.Argb.Green, color.Argb.Blue, color.Argb.Alpha);
                 SDL.RenderLine(Window.RendererHandle, start.X, start.Y, end.X, end.Y);
             }, IntPtr.Zero, false);
+    }
+
+    public void RenderLine(OEdgeInfo info)
+    {
+        RenderLine(new OVector2<float>(info.Start.X, info.Start.Y), new OVector2<float>(info.End.X, info.End.Y), info.Color);
+    }
+
+    public void RenderLines(ICollection<(OVector2<float> start, OVector2<float> end)> lines, OColor color)
+    {
+        foreach ((OVector2<float> start, OVector2<float> end) line in lines)
+            RenderLine(line.start, line.end, color);
+    }
+
+    public void RenderLines(ICollection<(OVector2<float> start, OVector2<float> end, OColor color)> lines)
+    {
+        foreach ((OVector2<float> start, OVector2<float> end, OColor color) line in lines)
+            RenderLine(line.start, line.end, line.color);
+    }
+
+    public void RenderLines(ICollection<OEdgeInfo> infos)
+    {
+        foreach (OEdgeInfo info in infos)
+            RenderLine(info);
     }
 
     public void Present()

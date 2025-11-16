@@ -162,7 +162,6 @@ public static class OkInstance
 
     public record OEdgeInfo
     {
-        // 
         // Properties
 
         public required OVector3<float> Start { get; init; }
@@ -185,7 +184,7 @@ public static class OkInstance
         public OFaceInfo? Mask { get; init; } = null;
         public OColor Color { get; init; } = OColor.Black;
         
-        // Methods
+        // Methods and Functions
 
         public ReadOnlyCollection<OVector3<float>> GetVertices()
         {

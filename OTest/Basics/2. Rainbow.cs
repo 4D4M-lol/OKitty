@@ -10,6 +10,8 @@ namespace OTest.Basics;
 
 public class Rainbow
 {
+    private const double SPEED = 1000; // How fast the color change. The lower, the faster.
+    
     private static OWindow window;
 
     public static void Start()
@@ -50,7 +52,7 @@ public class Rainbow
     {
         // Convert ticks to seconds for smooth animation.
         
-        double now = Ticks / 1000.0;
+        double now = Ticks / SPEED;
 
         // Generate three sine waves offset by 120° each.
         // This produces a continuous rainbow cycle.
