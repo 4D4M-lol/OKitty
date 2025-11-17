@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "Ta74iMs+4bI=",
+  "success": true,
+  "projectFilePath": "/home/sulthan/Documents/Rider/OKitty/OTest/OTest.csproj",
+  "expectedPackageFiles": [
+    "/home/sulthan/.nuget/packages/sdl3-cs/3.3.2.1/sdl3-cs.3.3.2.1.nupkg.sha512"
+  ],
+  "logs": []
+}

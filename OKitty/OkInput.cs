@@ -1,4 +1,4 @@
-// Imports
+﻿// Imports
 
 using System.Data;
 using static OKitty.OkMath;
@@ -589,7 +589,7 @@ public static class OkInput
 
         public HashSet<OKeyboardKey> GetKeys()
         {
-            bool[] keyboardState = SDL.GetKeyboardState(out int _);
+            ReadOnlySpan<bool> keyboardState = SDL.GetKeyboardState(out int _);
             SDL.Keymod modState = SDL.GetModState();
             HashSet<OKeyboardKey> keys = new();
 
@@ -619,7 +619,7 @@ public static class OkInput
 
         public bool IsKeyPressed(OKeyboardKey key)
         {
-            bool[] keyboardState = SDL.GetKeyboardState(out int _);
+            ReadOnlySpan<bool> keyboardState = SDL.GetKeyboardState(out int _);
 
             return keyboardState[(int)SDL.GetScancodeFromKey((SDL.Keycode)key, out _)];
         }

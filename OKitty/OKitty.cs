@@ -135,12 +135,72 @@ public interface IORenderer
         Software,
         OpenGl
     }
+
+    public enum ORendererBlendMode
+    {
+        Invalid = -1,
+        None = 0,
+        Blend = 1,
+        Add = 2,
+        Modulate = 4,
+        Multiply = 8,
+        BlendPremultiplied = 16,
+        AddPremultiplied = 32
+    }
     
     // Properties
     
     public string Name { get; }
     public ORendererType Type { get; }
     public OWindow? Window { get; set; }
+
+    public ORendererBlendMode BlendMode
+    {
+        get
+        {
+            if (Window is null)
+                return ORendererBlendMode.Invalid;
+
+            SDL.BlendMode blendMode = SDL.BlendMode.Invalid;
+
+            if (SDL.IsMainThread())
+                SDL.GetRenderDrawBlendMode(Window.RendererHandle, out blendMode);
+            else
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    SDL.GetRenderDrawBlendMode(Window.RendererHandle, out blendMode);
+                }, IntPtr.Zero, false);
+
+            if (blendMode == SDL.BlendMode.Invalid)
+                return ORendererBlendMode.Invalid;
+
+            return (ORendererBlendMode)blendMode;
+        }
+        set
+        {
+            if (Window is null)
+            {
+                ODebugger.Warn("Renderer must be parented to a window before it was modified.");
+
+                return;
+            }
+
+            if (value == ORendererBlendMode.Invalid)
+            {
+                ODebugger.Warn("Invalid blend mode value.");
+
+                return;
+            }
+
+            if (SDL.IsMainThread())
+                SDL.SetRenderDrawBlendMode(Window.RendererHandle, (SDL.BlendMode)value);
+            else
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    SDL.SetRenderDrawBlendMode(Window.RendererHandle, (SDL.BlendMode)value);
+                }, IntPtr.Zero, false);
+        }
+    }
     
     public OColor? Color
     {
@@ -165,7 +225,7 @@ public interface IORenderer
         {
             if (Window is null)
             {
-                ODebugger.Warn("Renderer must be parented to a window before its color is changed.");
+                ODebugger.Warn("Renderer must be parented to a window before it was modified.");
                 
                 return;
             }
@@ -280,6 +340,24 @@ public interface IORenderer
             SDL.RunOnMainThread((IntPtr _) =>
             {
                 SDL.RenderPresent(Window.RendererHandle);
+            }, IntPtr.Zero, false);
+    }
+
+    public void Clear()
+    {
+        if (Window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window to be cleared.");
+
+            return;
+        }
+
+        if (SDL.IsMainThread())
+            SDL.RenderClear(Window.RendererHandle);
+        else
+            SDL.RunOnMainThread((IntPtr _) =>
+            {
+                SDL.RenderClear(Window.RendererHandle);
             }, IntPtr.Zero, false);
     }
 }

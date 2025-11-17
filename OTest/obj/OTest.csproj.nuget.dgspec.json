@@ -1,0 +1,138 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/sulthan/Documents/Rider/OKitty/OTest/OTest.csproj": {}
+  },
+  "projects": {
+    "/home/sulthan/Documents/Rider/OKitty/OKitty/OKitty.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/sulthan/Documents/Rider/OKitty/OKitty/OKitty.csproj",
+        "projectName": "OKitty",
+        "projectPath": "/home/sulthan/Documents/Rider/OKitty/OKitty/OKitty.csproj",
+        "packagesPath": "/home/sulthan/.nuget/packages/",
+        "outputPath": "/home/sulthan/Documents/Rider/OKitty/OKitty/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/sulthan/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "SDL3-CS": {
+              "target": "Package",
+              "version": "[3.3.2.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/sulthan/Documents/Rider/OKitty/OTest/OTest.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/sulthan/Documents/Rider/OKitty/OTest/OTest.csproj",
+        "projectName": "OTest",
+        "projectPath": "/home/sulthan/Documents/Rider/OKitty/OTest/OTest.csproj",
+        "packagesPath": "/home/sulthan/.nuget/packages/",
+        "outputPath": "/home/sulthan/Documents/Rider/OKitty/OTest/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/sulthan/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/home/sulthan/Documents/Rider/OKitty/OKitty/OKitty.csproj": {
+                "projectPath": "/home/sulthan/Documents/Rider/OKitty/OKitty/OKitty.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
