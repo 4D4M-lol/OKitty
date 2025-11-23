@@ -34,9 +34,15 @@ class Program
                     Basics.Stars.Start();
                     
                     break;
+                case "illusion":
+                    // Run the illusion example.
+                    
+                    Basics.Illusion.Start();
+                    
+                    break;
                 case "house":
-                    // Run the animated house example.
-                
+                    // Run the house drawing example.
+
                     Basics.House.Start();
                     
                     break;

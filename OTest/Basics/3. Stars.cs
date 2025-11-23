@@ -28,6 +28,11 @@ public static class Stars
     private const float MIN_SPEED = 60;
     private const float MAX_SPEED = 120;
 
+    // The size of the window.
+
+    private static int WINDOW_WIDTH = 800;
+    private static int WINDOW_HEIGHT = 600;
+
     private static OWindow window;
     private static Random random = new Random();
 
@@ -42,9 +47,10 @@ public static class Stars
         OWindowOptions options = new OWindowOptions()
         {
             Name = "Stars",
-            Border = OWindow.OWindowBorder.Fixed,       // Prevent resizing.
-            BackgroundColor = OColor.Black,             // Dark background.
-            PresentAfterCallback = true                 // Required to draw correctly inside OnUpdate.
+            Size = new OVector2<int>(WINDOW_WIDTH, WINDOW_HEIGHT),      // Window size.
+            Border = OWindow.OWindowBorder.Fixed,                       // Prevent resizing.
+            BackgroundColor = OColor.Black,                             // Dark background.
+            PresentAfterCallback = true                                 // Required to draw correctly inside OnUpdate.
         };
 
         window = new OWindow(options);
@@ -58,7 +64,7 @@ public static class Stars
         
         for (int i = 0; i < STAR_AMOUNT; i++)
         {
-            OVector2<float> position = new OVector2<float>(random.NextSingle() * 800, random.NextSingle() * 600);
+            OVector2<float> position = new OVector2<float>(random.NextSingle() * WINDOW_WIDTH, random.NextSingle() * WINDOW_HEIGHT);
             float speed = MIN_SPEED + (random.NextSingle() * (MAX_SPEED - MIN_SPEED));
 
             stars.Add((position, speed));
@@ -87,12 +93,12 @@ public static class Stars
             // If the star exits the screen, wrap it back to a random location
             // along either the top edge or the left edge.
             
-            if (newPosition.X >= 800 || newPosition.Y >= 600)
+            if (newPosition.X >= WINDOW_WIDTH || newPosition.Y >= WINDOW_HEIGHT)
             {
                 if (random.Next(0, 2) == 0)
-                    newPosition = new OVector2<float>(random.NextSingle() * 800, 0);
+                    newPosition = new OVector2<float>(random.NextSingle() * WINDOW_HEIGHT, 0);
                 else
-                    newPosition = new OVector2<float>(0, random.NextSingle() * 600);
+                    newPosition = new OVector2<float>(0, random.NextSingle() * WINDOW_HEIGHT);
             }
 
             updated.Add((newPosition, star.speed));

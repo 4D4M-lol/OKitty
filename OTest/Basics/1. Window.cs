@@ -45,7 +45,8 @@ public static class Window
         {
             ODebugger.Log(closedByUser
                 ? "Window ended (closed by user).\n"
-                : "Window ended (stopped programmatically).\n");
+                : "Window ended (stopped programmatically).\n"
+            );
         };
 
         // Called after Dispose(), cleans up resources

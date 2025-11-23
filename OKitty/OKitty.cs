@@ -246,6 +246,90 @@ public interface IORenderer
     
     public void ApplyConfig();
 
+    public OShapeInfo ApplyMask(OShapeInfo info)
+    {
+        if (info.Mask == null)
+            return info;
+
+        List<OVector3<float>> vertices = EnsureCcw(GetPolygonFromLines(info.Lines));
+        List<OVector3<float>> clipPolygon = EnsureCcw(GetPolygonFromLines(info.Mask.Lines));
+
+        if (vertices.Count < 3 || clipPolygon.Count < 3)
+            return info;
+
+        List<OVector3<float>> clipped = new List<OVector3<float>>(vertices);
+
+        for (int i = 0; i < clipPolygon.Count; i++)
+        {
+            int j = (i + 1) % clipPolygon.Count;
+            OVector3<float> clipStart = clipPolygon[i];
+            OVector3<float> clipEnd = clipPolygon[j];
+            float nx = clipStart.Y - clipEnd.Y;
+            float ny = clipEnd.X - clipStart.X;
+            List<OVector3<float>> input = clipped;
+
+            clipped = new List<OVector3<float>>();
+
+            if (input.Count == 0)
+                break;
+
+            OVector3<float> prev = input[^1];
+            float prevDot =
+                (prev.X - clipStart.X) * nx +
+                (prev.Y - clipStart.Y) * ny;
+
+            foreach (OVector3<float> curr in input)
+            {
+                float currDot =
+                    (curr.X - clipStart.X) * nx +
+                    (curr.Y - clipStart.Y) * ny;
+
+                if (currDot >= 0 && prevDot >= 0)
+                    clipped.Add(curr);
+                else if (prevDot >= 0 && currDot < 0)
+                {
+                    float t = prevDot / (prevDot - currDot);
+
+                    clipped.Add(Intersect(prev, curr, t));
+                }
+                else if (prevDot < 0 && currDot >= 0)
+                {
+                    float t = prevDot / (prevDot - currDot);
+                    
+                    clipped.Add(Intersect(prev, curr, t));
+                    clipped.Add(curr);
+                }
+
+                prev = curr;
+                prevDot = currDot;
+            }
+        }
+
+        if (clipped.Count < 3)
+            return new OShapeInfo { Lines = new List<OLineInfo>() };
+
+        List<OLineInfo> newLines = new();
+
+        for (int i = 0; i < clipped.Count; i++)
+        {
+            OVector3<float> a = clipped[i];
+            OVector3<float> b = clipped[(i + 1) % clipped.Count];
+
+            newLines.Add(new OLineInfo
+            {
+                Start = a,
+                End = b,
+                Color = info.Color
+            });
+        }
+
+        return new OShapeInfo
+        {
+            Lines = newLines,
+            Color = info.Color
+        };
+    }
+
     public void RenderPoint(OVector2<float> position, OColor color)
     {
         if (Window is null)
@@ -302,7 +386,7 @@ public interface IORenderer
             }, IntPtr.Zero, false);
     }
 
-    public void RenderLine(OEdgeInfo info)
+    public void RenderLine(OLineInfo info)
     {
         RenderLine(new OVector2<float>(info.Start.X, info.Start.Y), new OVector2<float>(info.End.X, info.End.Y), info.Color);
     }
@@ -319,10 +403,38 @@ public interface IORenderer
             RenderLine(line.start, line.end, line.color);
     }
 
-    public void RenderLines(ICollection<OEdgeInfo> infos)
+    public void RenderLines(ICollection<OLineInfo> infos)
     {
-        foreach (OEdgeInfo info in infos)
+        foreach (OLineInfo info in infos)
             RenderLine(info);
+    }
+
+    public void RenderShape(OShapeInfo shape)
+    {
+        if (Window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window to render something.");
+
+            return;
+        }
+
+        OShapeInfo finalShape = shape.Mask is not null? ApplyMask(shape): shape;
+
+        if (finalShape.Lines.Count == 0)
+            return;
+
+        List<OVector2<float>> polygon = ShapeToPoints(finalShape);
+
+        FillPolygon(polygon, finalShape.Color);
+
+        foreach (OLineInfo line in finalShape.Lines)
+            RenderLine(line);
+    }
+
+    public void RenderShapes(ICollection<OShapeInfo> shapes)
+    {
+        foreach (OShapeInfo shape in shapes)
+            RenderShape(shape);
     }
 
     public void Present()
@@ -359,6 +471,97 @@ public interface IORenderer
             {
                 SDL.RenderClear(Window.RendererHandle);
             }, IntPtr.Zero, false);
+    }
+    
+    private List<OVector3<float>> GetPolygonFromLines(List<OLineInfo> lines)
+    {
+        HashSet<OVector3<float>> set = new HashSet<OVector3<float>>();
+
+        foreach (OLineInfo line in lines)
+        {
+            set.Add(line.Start);
+            set.Add(line.End);
+        }
+
+        return set.ToList();
+    }
+
+    private List<OVector3<float>> EnsureCcw(List<OVector3<float>> poly)
+    {
+        float sum = 0;
+
+        for (int i = 0; i < poly.Count; i++)
+        {
+            OVector3<float> a = poly[i];
+            OVector3<float> b = poly[(i + 1) % poly.Count];
+
+            sum += (b.X - a.X) * (b.Y + a.Y);
+        }
+
+        if (sum > 0)
+            poly.Reverse();
+
+        return poly;
+    }
+
+    private OVector3<float> Intersect(OVector3<float> a, OVector3<float> b, float t)
+    {
+        return new OVector3<float>(
+            a.X + t * (b.X - a.X),
+            a.Y + t * (b.Y - a.Y),
+            a.Z + t * (b.Z - a.Z)
+        );
+    }
+
+    private List<OVector2<float>> ShapeToPoints(OShapeInfo shape)
+    {
+        List<OVector2<float>> points = new();
+
+        foreach (OLineInfo line in shape.Lines)
+            points.Add(new OVector2<float>(line.Start.X, line.Start.Y));
+
+        return points.Distinct().ToList();
+    }
+
+    private void FillPolygon(List<OVector2<float>> vertices, OColor color)
+    {
+        if (vertices.Count < 3)
+            return;
+
+        float minY = vertices.Min(v => v.Y);
+        float maxY = vertices.Max(v => v.Y);
+
+        for (int y = (int)minY; y <= (int)maxY; y++)
+        {
+            List<float> intersections = new();
+
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                OVector2<float> a = vertices[i];
+                OVector2<float> b = vertices[(i + 1) % vertices.Count];
+
+                if ((y >= a.Y && y < b.Y) || (y >= b.Y && y < a.Y))
+                {
+                    float t = (y - a.Y) / (b.Y - a.Y);
+                    float x = a.X + t * (b.X - a.X);
+                    intersections.Add(x);
+                }
+            }
+
+            intersections.Sort();
+
+            for (int i = 0; i < intersections.Count - 1; i += 2)
+            {
+                float xStart = intersections[i];
+                float xEnd = intersections[i + 1];
+
+                RenderLine(
+                    new OVector2<float>(xStart, y),
+                    new OVector2<float>(xEnd, y),
+                    color
+                );
+            }
+        }
     }
 }
 
@@ -1107,6 +1310,7 @@ public class OWindow : IOPrototype
     public bool Initialized { get; private set; }
     public bool Running { get; private set; }
     public bool Visible { get; private set; }
+    public float FramePerSecond { get; private set; }
     public bool PresentAfterCallback { get; set; }
     public bool RenderWhileHidden { get; set; }
     public int Delay { get; set; }
@@ -1382,6 +1586,10 @@ public class OWindow : IOPrototype
         CloseOperation = options.CloseOperation;
         Delay = options.Delay;
         BackgroundColor = options.BackgroundColor;
+        Initialized = false;
+        Running = false;
+        Visible = false;
+        FramePerSecond = 0;
 
         if (options.Renderer.Window is OWindow)
         {
@@ -1671,8 +1879,11 @@ public class OWindow : IOPrototype
 
         if (!PresentAfterCallback)
             SDL.RenderPresent(_sdlRenderer);
-        
+
         _stopwatch.Stop();
+        
+        FramePerSecond = (float)(1.0 / (_stopwatch.Elapsed.TotalMilliseconds / 1000.0));
+        
         OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
         _stopwatch.Reset();
 

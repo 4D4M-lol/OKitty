@@ -1,7 +1,6 @@
 // Imports
 
 using System.Collections.ObjectModel;
-using static OKitty.OkInterface;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
@@ -160,14 +159,14 @@ public static class OkInstance
 
     // Records
 
-    public record OEdgeInfo
+    public record OLineInfo
     {
         // Properties
 
         public required OVector3<float> Start { get; init; }
         public required OVector3<float> End { get; init; }
         public OColor Color { get; init; } = OColor.Black;
-
+        
         // To String
 
         public override string ToString()
@@ -176,31 +175,31 @@ public static class OkInstance
         }
     }
 
-    public record OFaceInfo
+    public record OShapeInfo
     {
         // Properties
 
-        public required List<OEdgeInfo> Edges { get; init; }
-        public OFaceInfo? Mask { get; init; } = null;
+        public required List<OLineInfo> Lines { get; init; }
+        public OShapeInfo? Mask { get; init; } = null;
         public OColor Color { get; init; } = OColor.Black;
         
         // Methods and Functions
 
-        public ReadOnlyCollection<OVector3<float>> GetVertices()
+        public ReadOnlyCollection<OVector3<float>> GetPoints()
         {
-            List<OVector3<float>> vertices = new List<OVector3<float>>();
+            List<OVector3<float>> points = new List<OVector3<float>>();
             
-            foreach (OEdgeInfo edge in Edges)
-                vertices.AddRange(edge.Start, edge.End);
+            foreach (OLineInfo line in Lines)
+                points.AddRange(line.Start, line.End);
 
-            return new ReadOnlyCollection<OVector3<float>>(vertices.Distinct().ToList());
+            return new ReadOnlyCollection<OVector3<float>>(points.Distinct().ToList());
         }
 
         // To String
 
         public override string ToString()
         {
-            return $"[FaceInfo]";
+            return $"[ShapeInfo]";
         }
     }
 
@@ -210,20 +209,20 @@ public static class OkInstance
     {
         // Properties and Fields
 
-        public List<OFaceInfo> Faces { get; private set; }
+        public List<OShapeInfo> Shapes { get; private set; }
 
         // Methods and Functions
 
-        public ORenderInfo(List<OFaceInfo>? faces = null)
+        public ORenderInfo(List<OShapeInfo>? shapes = null)
         {
-            Faces = faces ?? new List<OFaceInfo>();
+            Shapes = shapes ?? new List<OShapeInfo>();
         }
 
         // To String
 
         public override string ToString()
         {
-            string faces = string.Join(", ", Faces);
+            string shapes = string.Join(", ", Shapes);
 
             return $"[RenderInfo]";
         }
@@ -922,7 +921,7 @@ public static class OkInstance
                 return null;
             
             ORenderInfo result = new ORenderInfo();
-            List<OFaceInfo> faces = new List<OFaceInfo>();
+            List<OShapeInfo> shapes = new List<OShapeInfo>();
 
             foreach (IOInstance child in _children)
             {
@@ -931,10 +930,10 @@ public static class OkInstance
                 if (info is null)
                     continue;
                 
-                faces.AddRange(info.Faces);
+                shapes.AddRange(info.Shapes);
             }
             
-            result.Faces.AddRange(faces);
+            result.Shapes.AddRange(shapes);
             
             return result;
         }
