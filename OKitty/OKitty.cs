@@ -7,6 +7,7 @@ using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
 using SDL3;
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 
 namespace OKitty;
@@ -77,6 +78,21 @@ public static class OInfos
     
     // Properties
 
+    private static readonly Dictionary<string, OPlatform> Platforms = new()
+    {
+        { "Atari MiNT", OPlatform.AtariMiNt },
+        { "FreeBSD", OPlatform.FreeBsd },
+        { "Haiku", OPlatform.Haiku },
+        { "Linux", OPlatform.Linux },
+        { "macOS", OPlatform.MacOs },
+        { "NetBSD", OPlatform.NetBsd },
+        { "OpenBSD", OPlatform.OpenBsd },
+        { "OS/2", OPlatform.Os2 },
+        { "QNX Neutrino", OPlatform.QnxNeutrino },
+        { "Solaris", OPlatform.Solaris },
+        { "Windows", OPlatform.Windows },
+        { "WinGdk", OPlatform.WinGdk }
+    };
     public static readonly string License = "Apache License 2.0";
     public static readonly string Copyright = "© 2025 OKitty Contributors";
     public static readonly string Author = "4D4M-lol";
@@ -86,22 +102,7 @@ public static class OInfos
     {
         get
         {
-            Dictionary<string, OPlatform> platforms = new()
-            {
-                { "Atari MiNT", OPlatform.AtariMiNt },
-                { "FreeBSD", OPlatform.FreeBsd },
-                { "Haiku", OPlatform.Haiku },
-                { "Linux", OPlatform.Linux },
-                { "macOS", OPlatform.MacOs },
-                { "NetBSD", OPlatform.NetBsd },
-                { "OpenBSD", OPlatform.OpenBsd },
-                { "OS/2", OPlatform.Os2 },
-                { "QNX Neutrino", OPlatform.QnxNeutrino },
-                { "Solaris", OPlatform.Solaris },
-                { "Windows", OPlatform.Windows },
-                { "WinGdk", OPlatform.WinGdk }
-            };
-            bool found = platforms.TryGetValue(SDL.GetPlatform(), out OPlatform platform);
+            bool found = Platforms.TryGetValue(SDL.GetPlatform(), out OPlatform platform);
 
             return found ? platform : OPlatform.Unknown;
         }
@@ -1279,6 +1280,15 @@ public class OWindow : IOPrototype
         Fixed,
         Resizable
     }
+
+    // Static Properties
+
+    public static ReadOnlyCollection<OInfos.OPlatform> SupportedPlatform { get; } = new(new List<OInfos.OPlatform>()
+    {
+        OInfos.OPlatform.AtariMiNt, OInfos.OPlatform.FreeBsd, OInfos.OPlatform.Haiku, OInfos.OPlatform.Linux, OInfos.OPlatform.MacOs,
+        OInfos.OPlatform.NetBsd, OInfos.OPlatform.OpenBsd, OInfos.OPlatform.Os2, OInfos.OPlatform.QnxNeutrino,
+        OInfos.OPlatform.Solaris, OInfos.OPlatform.Windows, OInfos.OPlatform.WinGdk
+    });
     
     // Properties and Fields
 
@@ -1571,6 +1581,13 @@ public class OWindow : IOPrototype
     
     public OWindow(OWindowOptions options)
     {
+        if (!SupportedPlatform.Contains(OInfos.Platform))
+        {
+            ODebugger.Error($"OWindow is not supported on \"{OInfos.Platform}\".\n");
+
+            return;
+        }
+
         _filter = Filter;
         _keyboard = new OKeyboard(this);
         _mouse = new OMouse(this);
