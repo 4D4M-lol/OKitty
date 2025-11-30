@@ -2,11 +2,11 @@
 
 using static OKitty.OkInput;
 using static OKitty.OkInstance;
+using static OKitty.OkInterface;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
 using SDL3;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace OKitty;
@@ -76,7 +76,9 @@ public static class OInfos
     }
     
     // Properties
-    
+
+    public static readonly string License = "Apache License 2.0";
+    public static readonly string Copyright = "© 2025 OKitty Contributors";
     public static readonly string Author = "4D4M-lol";
     public static readonly string Version = "1.0.0";
 
@@ -251,38 +253,34 @@ public interface IORenderer
         if (info.Mask == null)
             return info;
 
-        List<OVector3<float>> vertices = EnsureCcw(GetPolygonFromLines(info.Lines));
-        List<OVector3<float>> clipPolygon = EnsureCcw(GetPolygonFromLines(info.Mask.Lines));
+        List<OVector2<float>> vertices = EnsureCcw(GetPolygonFromLines(info.Lines));
+        List<OVector2<float>> clipPolygon = EnsureCcw(GetPolygonFromLines(info.Mask.Lines));
 
         if (vertices.Count < 3 || clipPolygon.Count < 3)
             return info;
 
-        List<OVector3<float>> clipped = new List<OVector3<float>>(vertices);
+        List<OVector2<float>> clipped = new List<OVector2<float>>(vertices);
 
         for (int i = 0; i < clipPolygon.Count; i++)
         {
             int j = (i + 1) % clipPolygon.Count;
-            OVector3<float> clipStart = clipPolygon[i];
-            OVector3<float> clipEnd = clipPolygon[j];
+            OVector2<float> clipStart = clipPolygon[i];
+            OVector2<float> clipEnd = clipPolygon[j];
             float nx = clipStart.Y - clipEnd.Y;
             float ny = clipEnd.X - clipStart.X;
-            List<OVector3<float>> input = clipped;
+            List<OVector2<float>> input = clipped;
 
-            clipped = new List<OVector3<float>>();
+            clipped = new List<OVector2<float>>();
 
             if (input.Count == 0)
                 break;
 
-            OVector3<float> prev = input[^1];
-            float prevDot =
-                (prev.X - clipStart.X) * nx +
-                (prev.Y - clipStart.Y) * ny;
+            OVector2<float> prev = input[^1];
+            float prevDot = (prev.X - clipStart.X) * nx + (prev.Y - clipStart.Y) * ny;
 
-            foreach (OVector3<float> curr in input)
+            foreach (OVector2<float> curr in input)
             {
-                float currDot =
-                    (curr.X - clipStart.X) * nx +
-                    (curr.Y - clipStart.Y) * ny;
+                float currDot =(curr.X - clipStart.X) * nx +(curr.Y - clipStart.Y) * ny;
 
                 if (currDot >= 0 && prevDot >= 0)
                     clipped.Add(curr);
@@ -306,24 +304,26 @@ public interface IORenderer
         }
 
         if (clipped.Count < 3)
-            return new OShapeInfo { Lines = new List<OLineInfo>() };
+            return new OShapeInfo() { Lines = new List<OLineInfo>() };
 
-        List<OLineInfo> newLines = new();
+        List<OLineInfo> newLines = new List<OLineInfo>();
 
         for (int i = 0; i < clipped.Count; i++)
         {
-            OVector3<float> a = clipped[i];
-            OVector3<float> b = clipped[(i + 1) % clipped.Count];
+            OVector2<float> a = clipped[i];
+            OVector2<float> b = clipped[(i + 1) % clipped.Count];
 
-            newLines.Add(new OLineInfo
-            {
-                Start = a,
-                End = b,
-                Color = info.Color
-            });
+            newLines.Add(
+                new OLineInfo()
+                {
+                    Start = a,
+                    End = b,
+                    Color = info.Color
+                }
+            );
         }
 
-        return new OShapeInfo
+        return new OShapeInfo()
         {
             Lines = newLines,
             Color = info.Color
@@ -418,7 +418,7 @@ public interface IORenderer
             return;
         }
 
-        OShapeInfo finalShape = shape.Mask is not null? ApplyMask(shape): shape;
+        OShapeInfo finalShape = shape.Mask is not null ? ApplyMask(shape) : shape;
 
         if (finalShape.Lines.Count == 0)
             return;
@@ -473,9 +473,9 @@ public interface IORenderer
             }, IntPtr.Zero, false);
     }
     
-    private List<OVector3<float>> GetPolygonFromLines(List<OLineInfo> lines)
+    private List<OVector2<float>> GetPolygonFromLines(List<OLineInfo> lines)
     {
-        HashSet<OVector3<float>> set = new HashSet<OVector3<float>>();
+        HashSet<OVector2<float>> set = new HashSet<OVector2<float>>();
 
         foreach (OLineInfo line in lines)
         {
@@ -486,14 +486,14 @@ public interface IORenderer
         return set.ToList();
     }
 
-    private List<OVector3<float>> EnsureCcw(List<OVector3<float>> poly)
+    private List<OVector2<float>> EnsureCcw(List<OVector2<float>> poly)
     {
         float sum = 0;
 
         for (int i = 0; i < poly.Count; i++)
         {
-            OVector3<float> a = poly[i];
-            OVector3<float> b = poly[(i + 1) % poly.Count];
+            OVector2<float> a = poly[i];
+            OVector2<float> b = poly[(i + 1) % poly.Count];
 
             sum += (b.X - a.X) * (b.Y + a.Y);
         }
@@ -504,12 +504,11 @@ public interface IORenderer
         return poly;
     }
 
-    private OVector3<float> Intersect(OVector3<float> a, OVector3<float> b, float t)
+    private OVector2<float> Intersect(OVector2<float> a, OVector2<float> b, float t)
     {
-        return new OVector3<float>(
+        return new OVector2<float>(
             a.X + t * (b.X - a.X),
-            a.Y + t * (b.Y - a.Y),
-            a.Z + t * (b.Z - a.Z)
+            a.Y + t * (b.Y - a.Y)
         );
     }
 
@@ -544,6 +543,7 @@ public interface IORenderer
                 {
                     float t = (y - a.Y) / (b.Y - a.Y);
                     float x = a.X + t * (b.X - a.X);
+                    
                     intersections.Add(x);
                 }
             }
@@ -608,7 +608,7 @@ public record OWindowOptions
     public OWindow.OWindowCloseOperation CloseOperation { get; init; } = OWindow.OWindowCloseOperation.Close;
     public OWindow.OWindowState State { get; init; } = OWindow.OWindowState.Normal;
     public OWindow.OWindowBorder Border { get; init; } = OWindow.OWindowBorder.Resizable;
-    public OColor BackgroundColor { get; init; } = OColor.White;
+    public OColor BackgroundColor { get; init; } = OInfos.PlatformTheme == OInfos.OPlatformTheme.Light ? OColor.White : OColor.FromArgb(255, 20, 20, 20);
     public int Delay { get; init; } = 16;
     public float Opacity { get; init; } = 1;
     public bool PresentAfterCallback { get; init; } = false;
@@ -1211,6 +1211,8 @@ public class OOpenGlRenderer : IORenderer
 
     private void Configure()
     {
+        SDL.SetHint(SDL.Hints.RenderDriver, "opengl");
+
         if (_profile is not null)
             SDL.GLSetAttribute(SDL.GLAttr.ContextProfileMask, (int)_profile);
         
@@ -1288,7 +1290,7 @@ public class OWindow : IOPrototype
     private OMouse _mouse;
     private OStorage _storage;
     private OScenes _scenes;
-    private Stopwatch _stopwatch;
+    private ulong _lastTickTime;
     private string _name;
     private OVector2<int> _size;
     private OVector2<int> _position;
@@ -1307,6 +1309,7 @@ public class OWindow : IOPrototype
     public OScenes Scenes => _scenes;
     public string Icon => "󰍹";
     public string InstanceName => "OWindow";
+    public OShapeInfo SafeArea { get; private set; }
     public bool Initialized { get; private set; }
     public bool Running { get; private set; }
     public bool Visible { get; private set; }
@@ -1572,7 +1575,7 @@ public class OWindow : IOPrototype
         _keyboard = new OKeyboard(this);
         _mouse = new OMouse(this);
         _storage = new OStorage(this, "Storage");
-        _stopwatch = new Stopwatch();
+        _lastTickTime = 0;
         _name = options.Name;
         _size = options.Size;
         _position = options.Position;
@@ -1586,6 +1589,7 @@ public class OWindow : IOPrototype
         CloseOperation = options.CloseOperation;
         Delay = options.Delay;
         BackgroundColor = options.BackgroundColor;
+        SafeArea = OShapeInfo.Empty;
         Initialized = false;
         Running = false;
         Visible = false;
@@ -1863,11 +1867,15 @@ public class OWindow : IOPrototype
 
         if (!Visible && !RenderWhileHidden)
             return null;
-    
-        _stopwatch.Start();
+
+        ulong currentTickTime = Ticks;
+        double deltaTime = (currentTickTime - _lastTickTime) / 1000.0;
+
+        _lastTickTime = currentTickTime;
     
         (byte alpha, byte red, byte green, byte blue) = BackgroundColor.Argb;
         float opacity = alpha / 255f;
+
         red = (byte)(red * opacity);
         green = (byte)(green * opacity);
         blue = (byte)(blue * opacity);
@@ -1877,15 +1885,19 @@ public class OWindow : IOPrototype
         SDL.RenderClear(_sdlRenderer);
         SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.Blend);
 
+        ORenderInfo? renderInfo = _scenes.Render();
+
+        if (renderInfo is not null)
+        {
+            _renderer.RenderShapes(renderInfo.Shapes);
+        }
+
         if (!PresentAfterCallback)
             SDL.RenderPresent(_sdlRenderer);
-
-        _stopwatch.Stop();
         
-        FramePerSecond = (float)(1.0 / (_stopwatch.Elapsed.TotalMilliseconds / 1000.0));
+        FramePerSecond = (float)(1000.0 / deltaTime);
         
-        OnUpdate?.Invoke(_stopwatch.Elapsed.TotalMilliseconds);
-        _stopwatch.Reset();
+        OnUpdate?.Invoke(deltaTime);
 
         if (PresentAfterCallback)
             SDL.RenderPresent(_sdlRenderer);
@@ -2028,7 +2040,10 @@ public class OWindow : IOPrototype
         SDL.SetWindowOpacity(_sdlWindow, _opacity);
         SDL.SetWindowAlwaysOnTop(_sdlWindow, _topmost);
         SDL.SetWindowFocusable(_sdlWindow, _focusable);
+        SDL.GetWindowSafeArea(_sdlWindow, out SDL.Rect safeArea);
 
+        _lastTickTime = Ticks;
+        SafeArea = OShapes.Rectangle(new OVector2<float>(safeArea.W, safeArea.H), new OVector2<float>(safeArea.X, safeArea.Y), 0, 0, OColor.Black);
         Initialized = true;
         
         _keyboard.Initialize();

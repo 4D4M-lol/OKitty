@@ -1,6 +1,5 @@
 ﻿// Imports
 
-using System.Data;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 using SDL3;
@@ -302,11 +301,6 @@ public static class OkInput
         
         // Static Properties
 
-        public OKeyboard(OWindow window, SDL.EventFilter filter)
-        {
-            _window = window;
-        }
-
         private static readonly Dictionary<char, char> ShiftedSymbols = new()
         {
             ['1'] = '!',
@@ -399,56 +393,23 @@ public static class OkInput
 
             if (modifier != OModifierKey.None)
             {
-                if (modifier.HasFlag(OModifierKey.LeftShift))
-                    ev.Key.Mod |= SDL.Keymod.LShift;
-
-                if (modifier.HasFlag(OModifierKey.RightShift))
-                    ev.Key.Mod |= SDL.Keymod.RShift;
-
-                if (modifier.HasFlag(OModifierKey.Shift))
-                    ev.Key.Mod |= SDL.Keymod.Shift;
-
-                if (modifier.HasFlag(OModifierKey.Level5Shift))
-                    ev.Key.Mod |= SDL.Keymod.Level5;
-
-                if (modifier.HasFlag(OModifierKey.LeftControl))
-                    ev.Key.Mod |= SDL.Keymod.LCtrl;
-
-                if (modifier.HasFlag(OModifierKey.RightControl))
-                    ev.Key.Mod |= SDL.Keymod.RCtrl;
-
-                if (modifier.HasFlag(OModifierKey.Control))
-                    ev.Key.Mod |= SDL.Keymod.Ctrl;
-
-                if (modifier.HasFlag(OModifierKey.LeftAlt))
-                    ev.Key.Mod |= SDL.Keymod.LAlt;
-
-                if (modifier.HasFlag(OModifierKey.RightAlt))
-                    ev.Key.Mod |= SDL.Keymod.RAlt;
-
-                if (modifier.HasFlag(OModifierKey.Alt))
-                    ev.Key.Mod |= SDL.Keymod.Alt;
-
-                if (modifier.HasFlag(OModifierKey.LeftGui))
-                    ev.Key.Mod |= SDL.Keymod.LGUI;
-
-                if (modifier.HasFlag(OModifierKey.RightGui))
-                    ev.Key.Mod |= SDL.Keymod.RGUI;
-
-                if (modifier.HasFlag(OModifierKey.Gui))
-                    ev.Key.Mod |= SDL.Keymod.GUI;
-
-                if (modifier.HasFlag(OModifierKey.ScrollLock))
-                    ev.Key.Mod |= SDL.Keymod.Scroll;
-
-                if (modifier.HasFlag(OModifierKey.CapsLock))
-                    ev.Key.Mod |= SDL.Keymod.Caps;
-
-                if (modifier.HasFlag(OModifierKey.NumLock))
-                    ev.Key.Mod |= SDL.Keymod.Num;
-
-                if (modifier.HasFlag(OModifierKey.Mode))
-                    ev.Key.Mod |= SDL.Keymod.Mode;
+                if (modifier.HasFlag(OModifierKey.LeftShift)) ev.Key.Mod |= SDL.Keymod.LShift;
+                if (modifier.HasFlag(OModifierKey.RightShift)) ev.Key.Mod |= SDL.Keymod.RShift;
+                if (modifier.HasFlag(OModifierKey.Shift)) ev.Key.Mod |= SDL.Keymod.Shift;
+                if (modifier.HasFlag(OModifierKey.Level5Shift)) ev.Key.Mod |= SDL.Keymod.Level5;
+                if (modifier.HasFlag(OModifierKey.LeftControl)) ev.Key.Mod |= SDL.Keymod.LCtrl;
+                if (modifier.HasFlag(OModifierKey.RightControl)) ev.Key.Mod |= SDL.Keymod.RCtrl;
+                if (modifier.HasFlag(OModifierKey.Control)) ev.Key.Mod |= SDL.Keymod.Ctrl;
+                if (modifier.HasFlag(OModifierKey.LeftAlt)) ev.Key.Mod |= SDL.Keymod.LAlt;
+                if (modifier.HasFlag(OModifierKey.RightAlt)) ev.Key.Mod |= SDL.Keymod.RAlt;
+                if (modifier.HasFlag(OModifierKey.Alt)) ev.Key.Mod |= SDL.Keymod.Alt;
+                if (modifier.HasFlag(OModifierKey.LeftGui)) ev.Key.Mod |= SDL.Keymod.LGUI;
+                if (modifier.HasFlag(OModifierKey.RightGui)) ev.Key.Mod |= SDL.Keymod.RGUI;
+                if (modifier.HasFlag(OModifierKey.Gui)) ev.Key.Mod |= SDL.Keymod.GUI;
+                if (modifier.HasFlag(OModifierKey.ScrollLock)) ev.Key.Mod |= SDL.Keymod.Scroll;
+                if (modifier.HasFlag(OModifierKey.CapsLock)) ev.Key.Mod |= SDL.Keymod.Caps;
+                if (modifier.HasFlag(OModifierKey.NumLock)) ev.Key.Mod |= SDL.Keymod.Num;
+                if (modifier.HasFlag(OModifierKey.Mode)) ev.Key.Mod |= SDL.Keymod.Mode;
             }
 
             if (SDL.IsMainThread())
@@ -469,61 +430,29 @@ public static class OkInput
         public void Release(OKeyboardKey key, OModifierKey modifier = OModifierKey.None)
         {
             SDL.Event ev = new();
+
             ev.Type = (uint)SDL.EventType.KeyUp;
             ev.Key.Key = (SDL.Keycode)key;
 
             if (modifier != OModifierKey.None)
             {
-                if (modifier.HasFlag(OModifierKey.LeftShift))
-                    ev.Key.Mod |= SDL.Keymod.LShift;
-                
-                if (modifier.HasFlag(OModifierKey.RightShift))
-                    ev.Key.Mod |= SDL.Keymod.RShift;
-                
-                if (modifier.HasFlag(OModifierKey.Shift))
-                    ev.Key.Mod |= SDL.Keymod.Shift;
-                
-                if (modifier.HasFlag(OModifierKey.Level5Shift))
-                    ev.Key.Mod |= SDL.Keymod.Level5;
-                
-                if (modifier.HasFlag(OModifierKey.LeftControl))
-                    ev.Key.Mod |= SDL.Keymod.LCtrl;
-                
-                if (modifier.HasFlag(OModifierKey.RightControl))
-                    ev.Key.Mod |= SDL.Keymod.RCtrl;
-                
-                if (modifier.HasFlag(OModifierKey.Control))
-                    ev.Key.Mod |= SDL.Keymod.Ctrl;
-                
-                if (modifier.HasFlag(OModifierKey.LeftAlt))
-                    ev.Key.Mod |= SDL.Keymod.LAlt;
-                
-                if (modifier.HasFlag(OModifierKey.RightAlt))
-                    ev.Key.Mod |= SDL.Keymod.RAlt;
-                
-                if (modifier.HasFlag(OModifierKey.Alt))
-                    ev.Key.Mod |= SDL.Keymod.Alt;
-                
-                if (modifier.HasFlag(OModifierKey.LeftGui))
-                    ev.Key.Mod |= SDL.Keymod.LGUI;
-                
-                if (modifier.HasFlag(OModifierKey.RightGui))
-                    ev.Key.Mod |= SDL.Keymod.RGUI;
-                
-                if (modifier.HasFlag(OModifierKey.Gui))
-                    ev.Key.Mod |= SDL.Keymod.GUI;
-                
-                if (modifier.HasFlag(OModifierKey.ScrollLock))
-                    ev.Key.Mod |= SDL.Keymod.Scroll;
-                
-                if (modifier.HasFlag(OModifierKey.CapsLock))
-                    ev.Key.Mod |= SDL.Keymod.Caps;
-                
-                if (modifier.HasFlag(OModifierKey.NumLock))
-                    ev.Key.Mod |= SDL.Keymod.Num;
-                
-                if (modifier.HasFlag(OModifierKey.Mode))
-                    ev.Key.Mod |= SDL.Keymod.Mode;
+                if (modifier.HasFlag(OModifierKey.LeftShift))   ev.Key.Mod |= SDL.Keymod.LShift;
+                if (modifier.HasFlag(OModifierKey.RightShift)) ev.Key.Mod |= SDL.Keymod.RShift;
+                if (modifier.HasFlag(OModifierKey.Shift)) ev.Key.Mod |= SDL.Keymod.Shift;
+                if (modifier.HasFlag(OModifierKey.Level5Shift)) ev.Key.Mod |= SDL.Keymod.Level5;
+                if (modifier.HasFlag(OModifierKey.LeftControl)) ev.Key.Mod |= SDL.Keymod.LCtrl;
+                if (modifier.HasFlag(OModifierKey.RightControl)) ev.Key.Mod |= SDL.Keymod.RCtrl;
+                if (modifier.HasFlag(OModifierKey.Control)) ev.Key.Mod |= SDL.Keymod.Ctrl;
+                if (modifier.HasFlag(OModifierKey.LeftAlt)) ev.Key.Mod |= SDL.Keymod.LAlt;
+                if (modifier.HasFlag(OModifierKey.RightAlt)) ev.Key.Mod |= SDL.Keymod.RAlt;
+                if (modifier.HasFlag(OModifierKey.Alt)) ev.Key.Mod |= SDL.Keymod.Alt;
+                if (modifier.HasFlag(OModifierKey.LeftGui)) ev.Key.Mod |= SDL.Keymod.LGUI;
+                if (modifier.HasFlag(OModifierKey.RightGui)) ev.Key.Mod |= SDL.Keymod.RGUI;
+                if (modifier.HasFlag(OModifierKey.Gui)) ev.Key.Mod |= SDL.Keymod.GUI;
+                if (modifier.HasFlag(OModifierKey.ScrollLock)) ev.Key.Mod |= SDL.Keymod.Scroll;
+                if (modifier.HasFlag(OModifierKey.CapsLock)) ev.Key.Mod |= SDL.Keymod.Caps;
+                if (modifier.HasFlag(OModifierKey.NumLock)) ev.Key.Mod |= SDL.Keymod.Num;
+                if (modifier.HasFlag(OModifierKey.Mode)) ev.Key.Mod |= SDL.Keymod.Mode;
             }
 
             if (SDL.IsMainThread())
@@ -545,44 +474,19 @@ public static class OkInput
             if (active == 0)
                 return modifier;
             
-            if (active.HasFlag(SDL.Keymod.LShift))
-                modifier |= OModifierKey.LeftShift;
-            
-            if (active.HasFlag(SDL.Keymod.RShift)) 
-                modifier |= OModifierKey.RightShift;
-            
-            if (active.HasFlag(SDL.Keymod.Level5))
-                modifier |= OModifierKey.Level5Shift;
-            
-            if (active.HasFlag(SDL.Keymod.LCtrl))
-                modifier |= OModifierKey.LeftControl;
-            
-            if (active.HasFlag(SDL.Keymod.RCtrl))
-                modifier |= OModifierKey.RightControl;
-            
-            if (active.HasFlag(SDL.Keymod.LAlt))
-                modifier |= OModifierKey.LeftAlt;
-            
-            if (active.HasFlag(SDL.Keymod.RAlt))
-                modifier |= OModifierKey.RightAlt;
-            
-            if (active.HasFlag(SDL.Keymod.LGUI))
-                modifier |= OModifierKey.LeftGui;
-            
-            if (active.HasFlag(SDL.Keymod.RGUI))
-                modifier |= OModifierKey.RightGui;
-            
-            if (active.HasFlag(SDL.Keymod.Scroll))
-                modifier |= OModifierKey.ScrollLock;
-            
-            if (active.HasFlag(SDL.Keymod.Caps))
-                modifier |= OModifierKey.CapsLock;
-            
-            if (active.HasFlag(SDL.Keymod.Num))
-                modifier |= OModifierKey.NumLock;
-            
-            if (active.HasFlag(SDL.Keymod.Mode))
-                modifier |= OModifierKey.Mode;
+            if (active.HasFlag(SDL.Keymod.LShift)) modifier |= OModifierKey.LeftShift;
+            if (active.HasFlag(SDL.Keymod.RShift))  modifier |= OModifierKey.RightShift;
+            if (active.HasFlag(SDL.Keymod.Level5)) modifier |= OModifierKey.Level5Shift;
+            if (active.HasFlag(SDL.Keymod.LCtrl)) modifier |= OModifierKey.LeftControl;
+            if (active.HasFlag(SDL.Keymod.RCtrl)) modifier |= OModifierKey.RightControl;
+            if (active.HasFlag(SDL.Keymod.LAlt)) modifier |= OModifierKey.LeftAlt;
+            if (active.HasFlag(SDL.Keymod.RAlt)) modifier |= OModifierKey.RightAlt;
+            if (active.HasFlag(SDL.Keymod.LGUI)) modifier |= OModifierKey.LeftGui;
+            if (active.HasFlag(SDL.Keymod.RGUI)) modifier |= OModifierKey.RightGui;
+            if (active.HasFlag(SDL.Keymod.Scroll)) modifier |= OModifierKey.ScrollLock;
+            if (active.HasFlag(SDL.Keymod.Caps)) modifier |= OModifierKey.CapsLock;
+            if (active.HasFlag(SDL.Keymod.Num)) modifier |= OModifierKey.NumLock;
+            if (active.HasFlag(SDL.Keymod.Mode)) modifier |= OModifierKey.Mode;
 
             return modifier;
         }
@@ -591,7 +495,7 @@ public static class OkInput
         {
             ReadOnlySpan<bool> keyboardState = SDL.GetKeyboardState(out int _);
             SDL.Keymod modState = SDL.GetModState();
-            HashSet<OKeyboardKey> keys = new();
+            HashSet<OKeyboardKey> keys = new HashSet<OKeyboardKey>();
 
             for (int i = 0; i < keyboardState.Length; i++)
             {
@@ -631,7 +535,7 @@ public static class OkInput
 
         public bool IsModifier(OKeyboardKey key)
         {
-            return OModifierKey.TryParse(key.ToString(), false, out OModifierKey _);
+            return OModifierKey.TryParse(key.ToString(), true, out OModifierKey _);
         }
 
         public string GetValue(OKeyboardKey key, OModifierKey modifier)
@@ -875,6 +779,7 @@ public static class OkInput
                     break;
                 case (uint)SDL.EventType.MouseMotion:
                     position = new OVector2<float>(ev.Motion.X, ev.Motion.Y);
+
                     Position = position;
                     
                     OnMove?.Invoke(position);

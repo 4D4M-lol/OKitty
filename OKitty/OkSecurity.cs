@@ -79,6 +79,7 @@ public static class OkSecurity
                 OHashAlgorithm.Sha384 =>  HashAlgorithmName.SHA384,
                 OHashAlgorithm.Sha512 =>  HashAlgorithmName.SHA512
             };
+
             using Rfc2898DeriveBytes pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, algorithmName);
             byte[] key = pbkdf2.GetBytes(KeySize);
             

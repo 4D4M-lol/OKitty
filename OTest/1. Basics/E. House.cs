@@ -1,4 +1,4 @@
-// 5. House
+// E. House
 //
 // This example renders a simple animated landscape scene:
 //
@@ -33,8 +33,8 @@ public static class House
 
     private const int CLOUD_AMOUNT = 10;
     private const int CLOUD_LENGTH = 250;
-    private const int MIN_SPEED = 60;
-    private const int MAX_SPEED = 120;
+    private const int MIN_SPEED = 24;
+    private const int MAX_SPEED = 48;
 
     // Each cloud stores: (position, speed)
 
@@ -71,28 +71,32 @@ public static class House
 
         ground = OShapes.Rectangle(
             new OVector2<float>(800, 137.5f),
-            new OVector3<float>(0, 462.5f, 0),
+            new OVector2<float>(0, 462.5f),
+            0,
             0,
             OColor.Green
         );
 
         wall = OShapes.Rectangle(
             new OVector2<float>(400, 200),
-            new OVector3<float>(200, 262.5f, 0),
+            new OVector2<float>(200, 262.5f),
+            0,
             0,
             OColor.Red
         );
 
         door = OShapes.Rectangle(
             new OVector2<float>(75, 150),
-            new OVector3<float>(220, 312.5f, 0),
+            new OVector2<float>(220, 312.5f),
+            0,
             0,
             OColor.Brown
         );
 
         roof = OShapes.Triangle(
             new OVector2<float>(400, 150),
-            new OVector3<float>(200, 112.5f, 0),
+            new OVector2<float>(200, 112.5f),
+            0,
             0,
             OShapes.OTriangleType.Isosceles,
             OColor.Brown

@@ -1,4 +1,4 @@
-// 2. Rainbow
+// B. Rainbow
 // This example demonstrates how to animate the window's background color
 // using a smooth rainbow effect. The color changes every frame based on time.
 

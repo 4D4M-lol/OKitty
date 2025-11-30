@@ -1,4 +1,4 @@
-// 3. Stars
+// C. Stars
 //
 // This example demonstrates basic 2D particle motion using OKitty.
 // A field of white stars moves diagonally across the screen to create
@@ -25,8 +25,8 @@ public static class Stars
     
     // Minimum and maximum travel speed for each star.
     
-    private const float MIN_SPEED = 60;
-    private const float MAX_SPEED = 120;
+    private const float MIN_SPEED = 24;
+    private const float MAX_SPEED = 48;
 
     // The size of the window.
 
@@ -96,7 +96,7 @@ public static class Stars
             if (newPosition.X >= WINDOW_WIDTH || newPosition.Y >= WINDOW_HEIGHT)
             {
                 if (random.Next(0, 2) == 0)
-                    newPosition = new OVector2<float>(random.NextSingle() * WINDOW_HEIGHT, 0);
+                    newPosition = new OVector2<float>(random.NextSingle() * WINDOW_WIDTH, 0);
                 else
                     newPosition = new OVector2<float>(0, random.NextSingle() * WINDOW_HEIGHT);
             }

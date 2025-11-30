@@ -1,4 +1,4 @@
-// 4. Illusion
+// D. Illusion
 //
 // This example demonstrates how to create a looping visual illusion
 // by rendering multiple shrinking rectangles. Each rectangle gradually
@@ -27,9 +27,13 @@ namespace OTest.Basics;
 
 public static class Illusion
 {
-    // Animation speed and window size
+    // Rectangle speed and amouint
 
-    private const int SPEED = 360;
+    private const int AMOUNT = 15;
+    private const int SPEED = 48;
+
+    // Window size
+
     private const int WINDOW_WIDTH = 800;
     private const int WINDOW_HEIGHT = 600;
 
@@ -39,7 +43,7 @@ public static class Illusion
 
     // Gradient used to color the rectangles (Nebula = blues, purples, reds)
 
-    private static OColorSequence gradient = OColorSequence.Nebula;
+    private static OColorSequence gradient = OColorSequence.Grayscale;
 
     // List of all rectangles in the illusion
 
@@ -66,11 +70,11 @@ public static class Illusion
 
         // Create multiple rectangles of different sizes, centered
 
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < AMOUNT; i++)
         {
             // Scale controls initial size variation
 
-            float scale = 1f - (i * 0.08f);
+            float scale = 1f - (i * (1.0f / AMOUNT));
 
             float width = WINDOW_WIDTH * scale;
             float height = WINDOW_HEIGHT * scale;
@@ -82,11 +86,11 @@ public static class Illusion
             float posX = (WINDOW_WIDTH - width) / 2f;
             float posY = (WINDOW_HEIGHT - height) / 2f;
 
-            OVector3<float> position = new OVector3<float>(posX, posY, 0);
+            OVector2<float> position = new OVector2<float>(posX, posY);
 
             // Initial rectangle, white (color will shift during animation)
 
-            OShapeInfo rectangle = OShapes.Rectangle(size, position, 0, OColor.White);
+            OShapeInfo rectangle = OShapes.Rectangle(size, position, 0, 0, OColor.White);
 
             rectangles.Add(rectangle);
         }
@@ -102,7 +106,7 @@ public static class Illusion
     {
         // Amount each rectangle shrinks each frame
 
-        float shrinkAmount = 50f * (float)deltaTime;
+        float shrinkAmount = SPEED * (float)deltaTime;
 
         List<OShapeInfo> updated = new List<OShapeInfo>();
 
@@ -134,7 +138,7 @@ public static class Illusion
             float posX = (WINDOW_WIDTH - width) / 2f;
             float posY = (WINDOW_HEIGHT - height) / 2f;
 
-            OVector3<float> newPosition = new OVector3<float>(posX, posY, 0);
+            OVector2<float> newPosition = new OVector2<float>(posX, posY);
 
             // Gradient color based on size ratio
             
@@ -143,7 +147,7 @@ public static class Illusion
 
             // Recreate the rectangle at the new size
 
-            OShapeInfo newShape = OShapes.Rectangle(newSize, newPosition, 0, color);
+            OShapeInfo newShape = OShapes.Rectangle(newSize, newPosition, 0, 0, color);
 
             updated.Add(newShape);
         }

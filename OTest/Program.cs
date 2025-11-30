@@ -46,6 +46,10 @@ class Program
                     Basics.House.Start();
                     
                     break;
+                case "frame":
+                    Interfaces.Frame.Start();
+                    
+                    break;
                 default:
                     // Unknown argument, fall back to default example.
                     

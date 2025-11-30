@@ -440,9 +440,9 @@ public static class OkStyling
         public OColor(double alpha, double red, double green, double blue)
         {
             alpha = Math.Clamp(alpha, 0.0, 1.0);
-            red   = Math.Clamp(red,   0.0, 1.0);
+            red = Math.Clamp(red,   0.0, 1.0);
             green = Math.Clamp(green, 0.0, 1.0);
-            blue  = Math.Clamp(blue,  0.0, 1.0);
+            blue = Math.Clamp(blue,  0.0, 1.0);
 
             byte a = (byte)(alpha * 255.0);
             byte r = (byte)(red   * 255.0);

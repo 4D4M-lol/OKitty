@@ -1,4 +1,4 @@
-// 1. Window
+// A. Window
 // Basic example showing how to create a window and use its main lifecycle events.
 
 using OKitty;
@@ -43,7 +43,8 @@ public static class Window
         
         window.OnEnd += (bool closedByUser) =>
         {
-            ODebugger.Log(closedByUser
+            ODebugger.Log(
+                closedByUser
                 ? "Window ended (closed by user).\n"
                 : "Window ended (stopped programmatically).\n"
             );
