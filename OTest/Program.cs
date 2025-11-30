@@ -47,6 +47,8 @@ class Program
                     
                     break;
                 case "frame":
+                    // Run the frame GUI example.
+                    
                     Interfaces.Frame.Start();
                     
                     break;
