@@ -18,10 +18,23 @@ public static class OkInstance
         // Properties
 
         public string Icon { get; }
-        public string InstanceName { get; }
         public string Name { get; set; }
 
         // Methods
+
+        public ReadOnlyCollection<IOModifier> GetModifiers();
+
+        public TModifier? GetModifier<TModifier>()
+            where TModifier : class, IOModifier;
+
+        public void AddModifier<TModifier>(TModifier modifier)
+            where TModifier : class, IOModifier;
+
+        public void RemoveModifier<TModifier>()
+            where TModifier : class, IOModifier;
+
+        public bool HasModifier<TModifier>()
+            where TModifier : class, IOModifier;
 
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants);
         public ORenderInfo? Render();
@@ -30,7 +43,7 @@ public static class OkInstance
 
         public string ToString()
         {
-            return $"<{InstanceName} Name=\"{Name}\">";
+            return $"<{GetType().Name} Name=\"{Name}\">";
         }
     }
 
@@ -44,6 +57,8 @@ public static class OkInstance
         // Methods and Functions
 
         public ReadOnlyCollection<IOInstance> GetChildren();
+        public void AddChild(IOInstance child);
+        public void RemoveChild(IOInstance child);
 
         public ReadOnlyCollection<IOInstance> GetDescendants()
         {
@@ -101,13 +116,14 @@ public static class OkInstance
             return null;
         }
 
-        public IOInstance? FindFirstChildWhichIsA(string instance)
+        public TInstance? FindFirstChildWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
             ReadOnlyCollection<IOInstance> children = GetChildren();
 
             foreach (IOInstance child in children)
-                if (child.InstanceName == instance)
-                    return child;
+                if (child is TInstance instance)
+                    return instance;
 
             return null;
         }
@@ -123,62 +139,136 @@ public static class OkInstance
             return null;
         }
 
-        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        public TInstance? FindFirstDescendantWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
             ReadOnlyCollection<IOInstance> descendants = GetDescendants();
 
             foreach (IOInstance descendant in descendants)
-                if (descendant.InstanceName == instance)
-                    return descendant;
+                if (descendant is TInstance instance)
+                    return instance;
 
             return null;
         }
 
-        public IOPrototype? FindFirstAncestorWhichIsA(string instance)
+        public IOPrototype? FindFirstAncestorNamed(string name)
         {
-            if (instance == "OWindow")
+            for (IOInstance? next = Parent; next != null; next = next.Parent)
             {
-                IOPrototype? scenesPrototype = FindFirstAncestorWhichIsA("OScenes");
+                if (next.Name == name)
+                    return next;
 
-                if (scenesPrototype is OScenes scenes)
-                    return scenes.Window;
-
-                IOPrototype? storagePrototype = FindFirstAncestorWhichIsA("OStorage");
-
-                if (storagePrototype is OStorage storage)
+                if (next is OStorage storage && storage.Window.Name == name)
                     return storage.Window;
+
+                if (next is OScenes scenes && scenes.Window.Name == name)
+                    return scenes.Window;
+            }
+
+            return null;
+        }
+
+        public TPrototype? FindFirstAncestorWhichIsA<TPrototype>()
+            where TPrototype : class, IOPrototype
+        {
+            if (typeof(TPrototype) == typeof(OWindow))
+            {
+                for (IOInstance? next = Parent; next != null; next = next.Parent)
+                {
+                    if (next is OStorage storage)
+                        return storage.Window as TPrototype;
+                    
+                    if (next is OScenes scenes)
+                        return scenes.Window as TPrototype;
+                }
 
                 return null;
             }
 
             for (IOInstance? next = Parent; next != null; next = next.Parent)
-                if (next.InstanceName == instance)
-                    return next;
+                if (next is TPrototype instance)
+                    return instance;
 
             return null;
         }
 
-        public bool IsAChildOf(string instance)
+        public bool IsAChildOf<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
-            return Parent is not null && Parent.InstanceName == instance;
+            return Parent is TPrototype;
         }
 
-        public bool IsADescendantOf(string instance)
+        public bool IsADescendantOf<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
+            if (typeof(TPrototype) == typeof(OWindow))
+                return IsADescendantOf<OStorage>() || IsADescendantOf<OScenes>();
+
             for (IOInstance? next = Parent; next != null; next = next.Parent)
-                if (next.InstanceName == instance)
+                if (next is TPrototype)
                     return true;
 
             return false;
         }
 
-        public void AddChild(IOInstance child);
-        public void RemoveChild(IOInstance child);
-
         // Events
 
         public event OInstanceEvents.OnChildAdded OnChildAdded;
         public event OInstanceEvents.OnChildRemoved OnChildRemoved;
+    }
+
+    public interface IOModifier
+    {
+        // Enums
+
+        [Flags]
+        public enum OModifierCallTime
+        {
+            PreRendering = 1 << 0,
+            Rendering = 1 << 1,
+            PostRendering = 1 << 2,
+            PreRenderingChild = 1 << 3,
+            RenderingChild = 1 <<  4,
+            PostRenderingChild = 1 << 5,
+            Extra1 = 1 << 6,
+            Extra2 = 1 << 7,
+            Extra3 = 1 << 8,
+            Extra4 = 1 << 9,
+            Extra5 = 1 << 10,
+            Extra6 = 1 << 11,
+            Extra7 = 1 << 12,
+            Extra8 = 1 << 13,
+            Extra9 = 1 << 14,
+            Extra10 = 1 << 15,
+            Extra11 = 1 << 16,
+            Extra12 = 1 << 17,
+            Extra13 = 1 << 18,
+            Extra14 = 1 << 19,
+            Extra15 = 1 << 20
+        }
+
+        public enum OModifierPriority
+        {
+            Lowest,
+            VeryLow,
+            Low,
+            Normal,
+            High,
+            VeryHigh,
+            Highest
+        }
+
+        // Properties
+
+        public string Icon { get; }
+        public OModifierCallTime CallTime { get; }
+        public OModifierPriority Priority { get; }
+        public IOPrototype? Parent { get; set; }
+
+        // Methods
+
+        public TDelegate? GetProcessor<TDelegate>()
+            where TDelegate : Delegate;
     }
 
     // Records
@@ -314,17 +404,17 @@ public static class OkInstance
         
         private OWindow _window;
         private List<IOInstance> _children;
+        private List<IOModifier> _modifiers;
 
         IOInstance? IOInstance.Parent { get; set; } = null;
         
         public OWindow Window => _window;
         public string Icon => "";
-        public string InstanceName => "OStorage";
         public string Name { get; set; } = "OStorage";
         public HashSet<string> Tags { get; } = new HashSet<string>();
         
         // Events
-        
+
         public event OInstanceEvents.OnChildAdded? OnChildAdded;
         public event OInstanceEvents.OnChildRemoved? OnChildRemoved;
         
@@ -334,6 +424,7 @@ public static class OkInstance
         {
             _window = window;
             _children = new List<IOInstance>();
+            _modifiers = new List<IOModifier>();
 
             Name = name;
         }
@@ -343,12 +434,82 @@ public static class OkInstance
             return new ReadOnlyCollection<IOInstance>(_children);
         }
 
+        public void AddChild(IOInstance child)
+        {
+            if (_children.Contains(child))
+                return;
+
+            _children.Add(child);
+
+            if (child.Parent != this)
+                child.Parent = this;
+
+            OnChildAdded?.Invoke(child);
+        }
+
+        public void RemoveChild(IOInstance child)
+        {
+            if (!_children.Remove(child))
+                return;
+
+            if (child.Parent == this)
+                child.Parent = null;
+
+            OnChildRemoved?.Invoke(child);
+        }
+
+        public ReadOnlyCollection<IOModifier> GetModifiers()
+        {
+            return new ReadOnlyCollection<IOModifier>(_modifiers);
+        }
+
+        public TModifier? GetModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            return _modifiers.OfType<TModifier>().FirstOrDefault();
+        }
+
+        public void AddModifier<TModifier>(TModifier modifier)
+            where TModifier : class, IOModifier
+        {
+            if (HasModifier<TModifier>())
+            {
+                ODebugger.Warn($"\"{Name}\" already have a(n) {modifier.GetType().Name} modifier.");
+
+                return;
+            }
+
+            _modifiers.Add(modifier);
+
+            if (modifier.Parent != this)
+                modifier.Parent = this;
+        }
+
+        public void RemoveModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            TModifier? modifier = GetModifier<TModifier>();
+
+            if (modifier is not null)
+            {
+                if (modifier.Parent == this)
+                    modifier.Parent = null;
+
+                _modifiers.Remove(modifier);
+            }
+        }
+
+        public bool HasModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            return _modifiers.OfType<TModifier>().Any();
+        }
+
         public ReadOnlyCollection<IOInstance> GetDescendants()
         {
             List<IOInstance> descendants = new List<IOInstance>();
-            ReadOnlyCollection<IOInstance> children = GetChildren();
 
-            descendants.AddRange(children);
+            descendants.AddRange(_children);
 
             foreach (IOInstance descendant in descendants)
                 descendants.AddRange(descendant.GetDescendants());
@@ -358,16 +519,14 @@ public static class OkInstance
 
         public ReadOnlyCollection<IOInstance> ChildSelector(Func<IOInstance, bool> selector)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-            List<IOInstance> selected = children.Where(selector).ToList();
+            List<IOInstance> selected = _children.Where(selector).ToList();
 
             return new ReadOnlyCollection<IOInstance>(selected);
         }
 
         public ReadOnlyCollection<IOInstance> ChildSelector(Func<IOInstance, int, bool> selector)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-            List<IOInstance> selected = children.Where(selector).ToList();
+            List<IOInstance> selected = _children.Where(selector).ToList();
 
             return new ReadOnlyCollection<IOInstance>(selected);
         }
@@ -390,22 +549,19 @@ public static class OkInstance
 
         public IOInstance? FindFirstChildNamed(string name)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-
-            foreach (IOInstance child in children)
+            foreach (IOInstance child in _children)
                 if (child.Name == name)
                     return child;
 
             return null;
         }
 
-        public IOInstance? FindFirstChildWhichIsA(string instance)
+        public TInstance? FindFirstChildWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-
-            foreach (IOInstance child in children)
-                if (child.InstanceName == instance)
-                    return child;
+            foreach (IOInstance child in _children)
+                if (child is TInstance instance)
+                    return instance;
 
             return null;
         }
@@ -421,30 +577,39 @@ public static class OkInstance
             return null;
         }
 
-        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        public TInstance? FindFirstDescendantWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
             ReadOnlyCollection<IOInstance> descendants = GetDescendants();
 
             foreach (IOInstance descendant in descendants)
-                if (descendant.InstanceName == instance)
-                    return descendant;
+                if (descendant is TInstance instance)
+                    return instance;
 
             return null;
         }
 
-        public IOPrototype? FindFirstAncestorWhichIsA(string instance)
+        public IOPrototype? FindFirstAncestorNamed(string name)
         {
-            return instance == "OWindow" ? _window : null; 
-        }
-        
-        public bool IsAChildOf(string instance)
-        {
-            return instance == "OWindow";
+            return _window.Name == name ? _window : null;
         }
 
-        public bool IsADescendantOf(string instance)
+        public TPrototype? FindFirstAncestorWhichIsA<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
-            return instance == "OWindow";
+            return typeof(OWindow) == typeof(TPrototype) ? _window as TPrototype : null;
+        }
+
+        public bool IsAChildOf<TPrototype>()
+            where TPrototype : class, IOPrototype
+        {
+            return typeof(TPrototype) == typeof(OWindow);
+        }
+
+        public bool IsADescendantOf<TPrototype>()
+            where TPrototype : class, IOPrototype
+        {
+            return typeof(TPrototype) == typeof(OWindow);
         }
         
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
@@ -477,30 +642,6 @@ public static class OkInstance
         {
             return null;
         }
-
-        public void AddChild(IOInstance child)
-        {
-            if (_children.Contains(child))
-                return;
-            
-            _children.Add(child);
-
-            if (child.Parent != this)
-                child.Parent = this;
-            
-            OnChildAdded?.Invoke(child);
-        }
-
-        public void RemoveChild(IOInstance child)
-        {
-            if (!_children.Remove(child))
-                return;
-
-            if (child.Parent == this)
-                child.Parent = null;
-            
-            OnChildRemoved?.Invoke(child);
-        }
     
         // To String
 
@@ -517,6 +658,7 @@ public static class OkInstance
         private OWindow _window;
         private OScene _main;
         private List<OScene> _scenes;
+        private List<IOModifier> _modifiers;
         private int _active;
     
         IOInstance? IOInstance.Parent { get; set; }
@@ -524,7 +666,6 @@ public static class OkInstance
         public OWindow Window => _window;
         public OScene Main => _main;
         public string Icon => "󰉏";
-        public string InstanceName => "OScenes";
         public string Name { get; set; } = "OScenes";
         public HashSet<string> Tags { get; } = new HashSet<string>();
 
@@ -556,6 +697,7 @@ public static class OkInstance
             _window = window;
             _main = main;
             _scenes = new List<OScene>();
+            _modifiers = new List<IOModifier>();
             _active = 0;
 
             Name = name;
@@ -581,6 +723,100 @@ public static class OkInstance
             children.AddRange(_scenes);
     
             return new ReadOnlyCollection<IOInstance>(children);
+        }
+
+        public void AddChild(IOInstance child)
+        {
+            if (child is not OScene scene)
+            {
+                ODebugger.Warn("Only an OScene can be parented to an OScenes.");
+
+                return;
+            }
+
+            if (_scenes.Contains(scene))
+                return;
+
+            _scenes.Add(scene);
+
+            if (scene.Parent != this)
+                scene.Parent = this;
+
+            OnChildAdded?.Invoke(scene);
+        }
+
+        public void RemoveChild(IOInstance child)
+        {
+            if (child is not OScene scene)
+            {
+                ODebugger.Warn("Only an OScene can be parented to an OScenes.");
+
+                return;
+            }
+
+            if (scene == _main)
+                return;
+
+            if (!_scenes.Contains(scene))
+                return;
+
+            if (_active != 0)
+                if (_scenes[_active - 1] == child)
+                    _active = 0;
+
+            _scenes.Remove(scene);
+
+            if (scene.Parent == this)
+                scene.Parent = null;
+
+            OnChildRemoved?.Invoke(scene);
+        }
+
+        public ReadOnlyCollection<IOModifier> GetModifiers()
+        {
+            return new ReadOnlyCollection<IOModifier>(_modifiers);
+        }
+
+        public TModifier? GetModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            return _modifiers.OfType<TModifier>().FirstOrDefault();
+        }
+
+        public void AddModifier<TModifier>(TModifier modifier)
+            where TModifier : class, IOModifier
+        {
+            if (HasModifier<TModifier>())
+            {
+                ODebugger.Warn($"\"{Name}\" already have a(n) {modifier.GetType().Name} modifier.");
+
+                return;
+            }
+
+            _modifiers.Add(modifier);
+
+            if (modifier.Parent != this)
+                modifier.Parent = this;
+        }
+
+        public void RemoveModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            TModifier? modifier = GetModifier<TModifier>();
+
+            if (modifier is not null)
+            {
+                if (modifier.Parent == this)
+                    modifier.Parent = null;
+
+                _modifiers.Remove(modifier);
+            }
+        }
+
+        public bool HasModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            return _modifiers.OfType<TModifier>().Any();
         }
 
         public ReadOnlyCollection<IOInstance> GetDescendants()
@@ -627,21 +863,17 @@ public static class OkInstance
 
         public IOInstance? FindFirstChildNamed(string name)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-
-            foreach (IOInstance child in children)
-                if (child.Name == name)
-                    return child;
+            foreach (OScene scene in _scenes)
+                if (scene.Name == name)
+                    return scene;
 
             return null;
         }
 
-        public IOInstance? FindFirstChildWhichIsA(string instance)
+        public TInstance? FindFirstChildWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
-            if (instance == "OScene")
-                return _main;
-
-            return null;
+            return typeof(TInstance) == typeof(OScene) ? _main as TInstance : null;
         }
 
         public IOInstance? FindFirstDescendantNamed(string name)
@@ -655,30 +887,42 @@ public static class OkInstance
             return null;
         }
 
-        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        public TInstance? FindFirstDescendantWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
+            if (typeof(TInstance) == typeof(OScene))
+                return _main as TInstance;
+            
             ReadOnlyCollection<IOInstance> descendants = GetDescendants();
 
             foreach (IOInstance descendant in descendants)
-                if (descendant.InstanceName == instance)
-                    return descendant;
+                if (descendant is TInstance instance)
+                    return instance;
 
             return null;
         }
 
-        public IOPrototype? FindFirstAncestorWhichIsA(string instance)
+        public IOPrototype? FindFirstAncestorNamed(string name)
         {
-            return instance == "OWindow" ? _window : null; 
+            return _window.Name == name ? _window : null;
         }
 
-        public bool IsAChildOf(string instance)
+        public TPrototype? FindFirstAncestorWhichIsA<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
-            return instance == "OWindow";
+            return typeof(OWindow) == typeof(TPrototype) ? _window as TPrototype : null;
         }
 
-        public bool IsADescendantOf(string instance)
+        public bool IsAChildOf<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
-            return instance == "OWindow";
+            return typeof(TPrototype) == typeof(OWindow);
+        }
+
+        public bool IsADescendantOf<TPrototype>()
+            where TPrototype : class, IOPrototype
+        {
+            return typeof(TPrototype) == typeof(OWindow);
         }
     
         public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
@@ -718,53 +962,6 @@ public static class OkInstance
             return _scenes[_active].Render();
         }
     
-        public void AddChild(IOInstance child)
-        {
-            if (child is not OScene scene)
-            {
-                ODebugger.Warn("Only an OScene can be parented to an OScenes.");
-                
-                return;
-            }
-                
-            if (_scenes.Contains(scene))
-                return;
-            
-            _scenes.Add(scene);
-
-            if (scene.Parent != this)
-                scene.Parent = this;
-
-            OnChildAdded?.Invoke(scene);
-        }
-    
-        public void RemoveChild(IOInstance child)
-        {
-            if (child is not OScene scene)
-            {
-                ODebugger.Warn("Only an OScene can be parented to an OScenes.");
-                
-                return;
-            }
-            
-            if (scene == _main)
-                return;
-
-            if (!_scenes.Contains(scene))
-                return;
-            
-            if (_active != 0)
-                if (_scenes[_active - 1] == child)
-                    _active = 0;
-            
-            _scenes.Remove(scene);
-            
-            if (scene.Parent == this)
-                scene.Parent = null;
-            
-            OnChildRemoved?.Invoke(scene);
-        }
-    
         // To String
     
         public override string ToString()
@@ -775,18 +972,13 @@ public static class OkInstance
     
     public class OScene : IOInstance
     {
-        // Records
-
-        private record OShapeLayerPair(OShapeInfo Shape, int Layer);
-        private record OGeometryLayerPair(OGeometryInfo Geometry, int Layer);
-
         // Properties and Fields
     
         private IOInstance? _parent;
         private List<IOInstance> _children;
+        private List<IOModifier> _modifiers;
     
         public string Icon => "󰈟";
-        public string InstanceName => "OScene";
         public string Name { get; set; } = "OScene";
         public HashSet<string> Tags { get; } = new HashSet<string>();
         public bool Main { get; private set; } = false;
@@ -853,6 +1045,7 @@ public static class OkInstance
     
             _parent = parent;
             _children = new List<IOInstance>();
+            _modifiers = new List<IOModifier>();
 
             Name = name;
             Main = main;
@@ -865,12 +1058,82 @@ public static class OkInstance
             return new ReadOnlyCollection<IOInstance>(_children);
         }
 
+        public void AddChild(IOInstance child)
+        {
+            if (_children.Contains(child))
+                return;
+
+            _children.Add(child);
+
+            if (child.Parent != this)
+                child.Parent = this;
+
+            OnChildAdded?.Invoke(child);
+        }
+
+        public void RemoveChild(IOInstance child)
+        {
+            if (!_children.Remove(child))
+                return;
+
+            if (child.Parent == this)
+                child.Parent = null;
+
+            OnChildRemoved?.Invoke(child);
+        }
+
+        public ReadOnlyCollection<IOModifier> GetModifiers()
+        {
+            return new ReadOnlyCollection<IOModifier>(_modifiers);
+        }
+
+        public TModifier? GetModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            return _modifiers.OfType<TModifier>().FirstOrDefault();
+        }
+
+        public void AddModifier<TModifier>(TModifier modifier)
+            where TModifier : class, IOModifier
+        {
+            if (HasModifier<TModifier>())
+            {
+                ODebugger.Warn($"\"{Name}\" already have a(n) {modifier.GetType().Name} modifier.");
+
+                return;
+            }
+
+            _modifiers.Add(modifier);
+
+            if (modifier.Parent != this)
+                modifier.Parent = this;
+        }
+
+        public void RemoveModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            TModifier? modifier = GetModifier<TModifier>();
+
+            if (modifier is not null)
+            {
+                if (modifier.Parent == this)
+                    modifier.Parent = null;
+
+                _modifiers.Remove(modifier);
+            }
+        }
+
+        public bool HasModifier<TModifier>()
+            where TModifier : class, IOModifier
+        {
+            return _modifiers.OfType<TModifier>().Any();
+        }
+
         public ReadOnlyCollection<IOInstance> GetDescendants()
         {
             List<IOInstance> descendants = new List<IOInstance>();
-            ReadOnlyCollection<IOInstance> children = GetChildren();
 
-            descendants.AddRange(children);
+            descendants.AddRange(_children);
 
             foreach (IOInstance descendant in descendants)
                 descendants.AddRange(descendant.GetDescendants());
@@ -880,16 +1143,14 @@ public static class OkInstance
 
         public ReadOnlyCollection<IOInstance> ChildSelector(Func<IOInstance, bool> selector)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-            List<IOInstance> selected = children.Where(selector).ToList();
+            List<IOInstance> selected = _children.Where(selector).ToList();
 
             return new ReadOnlyCollection<IOInstance>(selected);
         }
 
         public ReadOnlyCollection<IOInstance> ChildSelector(Func<IOInstance, int, bool> selector)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-            List<IOInstance> selected = children.Where(selector).ToList();
+            List<IOInstance> selected = _children.Where(selector).ToList();
 
             return new ReadOnlyCollection<IOInstance>(selected);
         }
@@ -912,22 +1173,19 @@ public static class OkInstance
 
         public IOInstance? FindFirstChildNamed(string name)
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-
-            foreach (IOInstance child in children)
+            foreach (IOInstance child in _children)
                 if (child.Name == name)
                     return child;
 
             return null;
         }
 
-        public IOInstance? FindFirstChildWhichIsA(string instance)
+        public TInstance? FindFirstChildWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
-            ReadOnlyCollection<IOInstance> children = GetChildren();
-
-            foreach (IOInstance child in children)
-                if (child.InstanceName == instance)
-                    return child;
+            foreach (IOInstance child in _children)
+                if (child is TInstance instance)
+                    return instance;
 
             return null;
         }
@@ -943,50 +1201,73 @@ public static class OkInstance
             return null;
         }
 
-        public IOInstance? FindFirstDescendantWhichIsA(string instance)
+        public TInstance? FindFirstDescendantWhichIsA<TInstance>()
+            where TInstance : class, IOInstance
         {
             ReadOnlyCollection<IOInstance> descendants = GetDescendants();
 
             foreach (IOInstance descendant in descendants)
-                if (descendant.InstanceName == instance)
-                    return descendant;
+                if (descendant is TInstance instance)
+                    return instance;
 
             return null;
         }
 
-        public IOPrototype? FindFirstAncestorWhichIsA(string instance)
+        public IOPrototype? FindFirstAncestorNamed(string name)
         {
-            if (instance == "OWindow")
+            for (IOInstance? next = Parent; next != null; next = next.Parent)
             {
-                IOPrototype? scenesPrototype = FindFirstAncestorWhichIsA("OScenes");
+                if (next.Name == name)
+                    return next;
 
-                if (scenesPrototype is OScenes scenes)
+                if (next is OStorage storage && storage.Window.Name == name)
+                    return storage.Window;
+
+                if (next is OScenes scenes && scenes.Window.Name == name)
                     return scenes.Window;
+            }
 
-                IOPrototype? storagePrototype = FindFirstAncestorWhichIsA("OStorage");
+            return null;
+        }
 
-                if (storagePrototype is not OStorage storage)
-                    return null;
+        public TPrototype? FindFirstAncestorWhichIsA<TPrototype>()
+            where TPrototype : class, IOPrototype
+        {
+            if (typeof(TPrototype) == typeof(OWindow))
+            {
+                for (IOInstance? next = Parent; next != null; next = next.Parent)
+                {
+                    if (next is OStorage storage)
+                        return storage.Window as TPrototype;
 
-                return storage.Window;
+                    if (next is OScenes scenes)
+                        return scenes.Window as TPrototype;
+                }
+
+                return null;
             }
 
             for (IOInstance? next = Parent; next != null; next = next.Parent)
-                if (next.InstanceName == instance)
-                    return next;
+                if (next is TPrototype instance)
+                    return instance;
 
             return null;
         }
 
-        public bool IsAChildOf(string instance)
+        public bool IsAChildOf<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
-            return Parent is not null && Parent.InstanceName == instance;
+            return Parent is TPrototype;
         }
 
-        public bool IsADescendantOf(string instance)
+        public bool IsADescendantOf<TPrototype>()
+            where TPrototype : class, IOPrototype
         {
+            if (typeof(TPrototype) == typeof(OWindow))
+                return IsADescendantOf<OStorage>() || IsADescendantOf<OScenes>();
+
             for (IOInstance? next = Parent; next != null; next = next.Parent)
-                if (next.InstanceName == instance)
+                if (next is TPrototype)
                     return true;
 
             return false;
@@ -1016,30 +1297,6 @@ public static class OkInstance
             _children.Clear();
         }
 
-        public void AddChild(IOInstance child)
-        {
-            if (_children.Contains(child))
-                return;
-            
-            _children.Add(child);
-
-            if (child.Parent != this)
-                child.Parent = this;
-
-            OnChildAdded?.Invoke(child);
-        }
-    
-        public void RemoveChild(IOInstance child)
-        {
-            if (!_children.Remove(child))
-                return;
-            
-            if (child.Parent == this)
-                child.Parent = null;
-            
-            OnChildRemoved?.Invoke(child);
-        }
-
         public ORenderInfo? Render()
         {
             if (_parent is not OScenes scenes)
@@ -1054,10 +1311,10 @@ public static class OkInstance
                 return null;
 
             ORenderInfo result = new ORenderInfo();
-            List<OShapeInfo> sceneShapes = new List<OShapeInfo>();
             List<OGeometryInfo> sceneGeometries = new List<OGeometryInfo>();
-            List<OShapeLayerPair> uiShapes = new List<OShapeLayerPair>();
-            List<OGeometryLayerPair> uiGeometries = new List<OGeometryLayerPair>();
+            List<(OGeometryInfo geometry, int layer)> uiGeometries = new List<(OGeometryInfo geometry, int layer)>();
+            List<OShapeInfo> sceneShapes = new List<OShapeInfo>();
+            List<(OShapeInfo shape, int layer)> uiShapes = new List<(OShapeInfo shape, int layer)>();
 
             foreach (IOInstance child in _children)
             {
@@ -1070,8 +1327,8 @@ public static class OkInstance
 
                 if (!isInterface)
                 {
-                    sceneShapes.AddRange(info.Shapes);
                     sceneGeometries.AddRange(info.Geometries);
+                    sceneShapes.AddRange(info.Shapes);
                 }
                 else
                 {
@@ -1082,26 +1339,26 @@ public static class OkInstance
                         _ => 0
                     };
 
-                    foreach (OShapeInfo s in info.Shapes)
-                        uiShapes.Add(new OShapeLayerPair(s, layer));
+                    foreach (OGeometryInfo geometry in info.Geometries)
+                        uiGeometries.Add((geometry, layer));
 
-                    foreach (OGeometryInfo g in info.Geometries)
-                        uiGeometries.Add(new OGeometryLayerPair(g, layer));
+                    foreach (OShapeInfo shape in info.Shapes)
+                        uiShapes.Add((shape, layer));
                 }
             }
 
-            uiShapes = uiShapes.OrderBy((OShapeLayerPair x) => x.Layer).ToList();
-            uiGeometries = uiGeometries.OrderBy((OGeometryLayerPair x) => x.Layer).ToList();
+            uiGeometries = uiGeometries.OrderBy(((OGeometryInfo geometry, int layer) entry) => entry.layer).ToList();
+            uiShapes = uiShapes.OrderBy(((OShapeInfo shape, int layer) entry) => entry.layer).ToList();
 
             result.Geometries.AddRange(sceneGeometries);
 
-            foreach (OGeometryLayerPair entry in uiGeometries)
-                result.Geometries.Add(entry.Geometry);
+            foreach ((OGeometryInfo geometry, int layer) entry in uiGeometries)
+                result.Geometries.Add(entry.geometry);
 
             result.Shapes.AddRange(sceneShapes);
 
-            foreach (OShapeLayerPair entry in uiShapes)
-                result.Shapes.Add(entry.Shape);
+            foreach ((OShapeInfo shape, int layer) entry in uiShapes)
+                result.Shapes.Add(entry.shape);
 
             return result;
         }

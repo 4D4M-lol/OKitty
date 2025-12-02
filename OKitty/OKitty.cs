@@ -1300,6 +1300,7 @@ public class OWindow : IOPrototype
     private OMouse _mouse;
     private OStorage _storage;
     private OScenes _scenes;
+    private List<IOModifier> _modifiers;
     private ulong _lastTickTime;
     private string _name;
     private OVector2<int> _size;
@@ -1318,7 +1319,6 @@ public class OWindow : IOPrototype
     public OStorage Storage => _storage;
     public OScenes Scenes => _scenes;
     public string Icon => "󰍹";
-    public string InstanceName => "OWindow";
     public OShapeInfo SafeArea { get; private set; }
     public bool Initialized { get; private set; }
     public bool Running { get; private set; }
@@ -1592,6 +1592,7 @@ public class OWindow : IOPrototype
         _keyboard = new OKeyboard(this);
         _mouse = new OMouse(this);
         _storage = new OStorage(this, "Storage");
+        _modifiers = new List<IOModifier>();
         _lastTickTime = 0;
         _name = options.Name;
         _size = options.Size;
@@ -1601,6 +1602,7 @@ public class OWindow : IOPrototype
         _opacity = options.Opacity;
         _topmost = options.Topmost;
         _focusable = options.Focusable;
+
         PresentAfterCallback = options.PresentAfterCallback;
         RenderWhileHidden = options.RenderWhileHidden;
         CloseOperation = options.CloseOperation;
@@ -1626,6 +1628,53 @@ public class OWindow : IOPrototype
         OScene main = new OScene(null, "Main", true);
 
         _scenes = new OScenes(this, main, "Scenes");
+    }
+
+    public ReadOnlyCollection<IOModifier> GetModifiers()
+    {
+        return new ReadOnlyCollection<IOModifier>(_modifiers);
+    }
+
+    public TModifier? GetModifier<TModifier>()
+        where TModifier : class, IOModifier
+    {
+        return _modifiers.OfType<TModifier>().FirstOrDefault();
+    }
+
+    public void AddModifier<TModifier>(TModifier modifier)
+        where TModifier : class, IOModifier
+    {
+        if (HasModifier<TModifier>())
+        {
+            ODebugger.Warn($"\"{Name}\" already have a(n) {modifier.GetType().Name} modifier.");
+
+            return;
+        }
+
+        _modifiers.Add(modifier);
+
+        if (modifier.Parent != this)
+            modifier.Parent = this;
+    }
+
+    public void RemoveModifier<TModifier>()
+        where TModifier : class, IOModifier
+    {
+        TModifier? modifier = GetModifier<TModifier>();
+
+        if (modifier is not null)
+        {
+            if (modifier.Parent == this)
+                modifier.Parent = null;
+
+            _modifiers.Remove(modifier);
+        }
+    }
+
+    public bool HasModifier<TModifier>()
+        where TModifier : class, IOModifier
+    {
+        return _modifiers.OfType<TModifier>().Any();
     }
 
     public IOPrototype? Clone(bool cloneChildren, bool cloneDescendants)
