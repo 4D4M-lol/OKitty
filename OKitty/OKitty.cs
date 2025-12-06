@@ -1932,7 +1932,6 @@ public class OWindow : IOPrototype
         if (!Initialized)
         {
             ODebugger.Warn("Window must be initialized before being rendered.\n");
-            
             return null;
         }
 
@@ -1943,14 +1942,21 @@ public class OWindow : IOPrototype
         double deltaTime = (currentTickTime - _lastTickTime) / 1000.0;
 
         _lastTickTime = currentTickTime;
-    
-        (byte alpha, byte red, byte green, byte blue) = BackgroundColor.Argb;
+
+        RunModifierPipeline<object, double>(IOModifier.OModifierCallTime.Physics, deltaTime);
+        RunModifierPipeline<object, double>(IOModifier.OModifierCallTime.Animation, deltaTime);
+        RunModifierPipeline<object, double>(IOModifier.OModifierCallTime.Behavior, deltaTime);
+
+        OColor windowColor = BackgroundColor;
+
+        windowColor = RunModifierPipeline<OColor, OColor>(IOModifier.OModifierCallTime.PreRender, windowColor);
+
+        (byte alpha, byte red, byte green, byte blue) = windowColor.Argb;
         float opacity = alpha / 255f;
 
         red = (byte)(red * opacity);
         green = (byte)(green * opacity);
         blue = (byte)(blue * opacity);
-        
         SDL.SetRenderDrawColor(_sdlRenderer, red, green, blue, alpha);
         SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.None);
         SDL.RenderClear(_sdlRenderer);
@@ -1959,22 +1965,43 @@ public class OWindow : IOPrototype
         ORenderInfo? renderInfo = _scenes.Render();
 
         if (renderInfo is not null)
-        {
             _renderer.RenderShapes(renderInfo.Shapes);
-        }
+
+        RunModifierPipeline<object, object>(IOModifier.OModifierCallTime.PostRender, new object());
 
         if (!PresentAfterCallback)
             SDL.RenderPresent(_sdlRenderer);
-        
+
         FramePerSecond = (float)(1000.0 / deltaTime);
-        
+
         OnUpdate?.Invoke(deltaTime);
 
         if (PresentAfterCallback)
             SDL.RenderPresent(_sdlRenderer);
-    
+
         return null;
     }
+
+
+    private T? RunModifierPipeline<T, TParams>(IOModifier.OModifierCallTime stage, TParams parameters)
+    {
+        foreach (IOModifier modifier in _modifiers)
+        {
+            if (!modifier.Active || !modifier.CallTime.HasFlag(stage))
+                continue;
+
+            if (!modifier.CanProcess<T, TParams>())
+                continue;
+
+            T? result = modifier.Process<T, TParams>(stage, parameters);
+
+            if (result is not null)
+                return result;
+        }
+
+        return default;
+    }
+
 
     private bool Filter(IntPtr _, ref SDL.Event ev)
     {

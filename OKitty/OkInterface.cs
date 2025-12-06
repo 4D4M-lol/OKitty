@@ -645,28 +645,47 @@ public static class OkInterface
 
             ORenderInfo renderInfo = new ORenderInfo();
 
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRender))
+                    modifier.Process<object, object>( IOModifier.OModifierCallTime.PreRender, this);
+
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
+                    modifier.Process<object, object>( IOModifier.OModifierCallTime.PreRenderChildren, this);
+
             foreach (IOInstance child in _children)
             {
                 ORenderInfo? childInfo = child.Render();
 
                 if (childInfo is null)
                     continue;
-                
+
                 foreach (OShapeInfo shapeInfo in childInfo.Shapes)
                 {
                     OShapeInfo clipped = window.Renderer.ApplyMask(shapeInfo);
 
                     renderInfo.Shapes.Add(new OShapeInfo()
-                        {
-                            Lines = clipped.Lines,
-                            Color = clipped.Color,
-                            Mask = Clip ? window.SafeArea : null,
-                            Layer = clipped.Layer
-                        }
-                    );
-                }   
+                    {
+                        Lines = clipped.Lines,
+                        Color = clipped.Color,
+                        Mask = Clip ? window.SafeArea : null,
+                        Layer = clipped.Layer
+                    });
+                }
+
+                foreach (IOModifier modifier in _modifiers) 
+                    if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.RenderChildren)) 
+                        modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.RenderChildren, childInfo);
             }
-            
+
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))
+                    renderInfo = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRenderChildren, renderInfo) ?? renderInfo;
+
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRender))
+                    renderInfo = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRender, renderInfo) ?? renderInfo;
+
             return renderInfo;
         }
     }
@@ -1021,73 +1040,46 @@ public static class OkInterface
                 return null;
 
             OWindow? window = _parent.FindFirstAncestorWhichIsA<OWindow>();
-            
+
             if (window is null)
                 return null;
 
             if (_parent is IOGui)
             {
-                _absoluteSize = new OVector2<float>((window.Size.X * Size.Scale.X) + Size.Offset.X, (window.Size.Y * Size.Scale.Y) + Size.Offset.Y);
-                _absolutePosition = new OVector2<float>((window.Size.X * Position.Scale.X) + Position.Offset.X, (window.Size.Y * Position.Scale.Y) + Position.Offset.Y);
+                _absoluteSize = new((window.Size.X * Size.Scale.X) + Size.Offset.X, (window.Size.Y * Size.Scale.Y) + Size.Offset.Y);
+                _absolutePosition = new((window.Size.X * Position.Scale.X) + Position.Offset.X, (window.Size.Y * Position.Scale.Y) + Position.Offset.Y);
             }
             else if (_parent is IOInterface parentInterface)
             {
-                _absoluteSize = new OVector2<float>((parentInterface.AbsoluteSize.X * Size.Scale.X) + Size.Offset.X, (parentInterface.AbsoluteSize.Y * Size.Scale.Y) + Size.Offset.Y);
-                _absolutePosition = new OVector2<float>(
+                _absoluteSize = new((parentInterface.AbsoluteSize.X * Size.Scale.X) + Size.Offset.X, (parentInterface.AbsoluteSize.Y * Size.Scale.Y) + Size.Offset.Y);
+                _absolutePosition = new(
                     (parentInterface.AbsoluteSize.X * Position.Scale.X) + Position.Offset.X + parentInterface.AbsolutePosition.X,
                     (parentInterface.AbsoluteSize.Y * Position.Scale.Y) + Position.Offset.Y + parentInterface.AbsolutePosition.Y
                 );
             }
 
-            foreach (IOModifier modifier in _modifiers)
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Layout))
-                    continue;
+            (OVector2<float>, OVector2<float>) layoutResult = RunModifierPipeline<(OVector2<float>, OVector2<float>), (OVector2<float>, OVector2<float>)>(
+                IOModifier.OModifierCallTime.Layout, (_absoluteSize, _absolutePosition)
+            );
 
-                (OVector2<float> size, OVector2<float> position) result = modifier.Process<(OVector2<float>, OVector2<float>), (OVector2<float>, OVector2<float>)>(
-                    IOModifier.OModifierCallTime.Layout,
-                    (_absoluteSize, _absolutePosition)
-                );
+            if (layoutResult != default)
+                (_absoluteSize, _absolutePosition) = layoutResult;
 
-                _absoluteSize = result.size;
-                _absolutePosition = result.position;
-            }
+            (OVector2<float>, OVector2<float>) layoutBeforeResult = RunModifierPipeline<(OVector2<float>, OVector2<float>), (OVector2<float>, OVector2<float>)>(
+                IOModifier.OModifierCallTime.LayoutBeforeChildren, (_absoluteSize, _absolutePosition)
+            );
 
-            foreach (IOModifier modifier in _modifiers)
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.LayoutChildren))
-                    continue;
+            if (layoutBeforeResult != default)
+                (_absoluteSize, _absolutePosition) = layoutBeforeResult;
 
-                modifier.Process<object, (OVector2<float>, OVector2<float>)>(IOModifier.OModifierCallTime.LayoutChildren, (_absoluteSize, _absolutePosition));
-            }
+            foreach (IOInstance child in _children)
+                RunModifierPipeline<IOInstance, IOInstance>(IOModifier.OModifierCallTime.LayoutChildren, child);
 
             OShapeInfo baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
 
-            foreach (IOModifier modifier in _modifiers)
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRender))
-                    continue;
-                
-                baseFrame = modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PreRender, baseFrame) ?? baseFrame;
-            }
-
-            foreach (IOModifier modifier in _modifiers)
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Render))
-                    continue;
-
-                baseFrame = modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.Render, baseFrame) ?? baseFrame;
-            }
-
-            foreach (IOModifier modifier in _modifiers )
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRender))
-                    continue;
-                
-                baseFrame =
-                    modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PostRender, baseFrame) ??
-                    baseFrame;
-            }
+            baseFrame = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PreRender, baseFrame) ?? baseFrame;
+            baseFrame = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.Render, baseFrame) ?? baseFrame;
+            baseFrame = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PostRender, baseFrame) ?? baseFrame;
 
             List<OShapeInfo> childShapes = new();
 
@@ -1098,69 +1090,29 @@ public static class OkInterface
                 if (childInfo == null)
                     continue;
 
-                childShapes.AddRange(childInfo.Shapes);
-            }
-
-            foreach (IOModifier modifier in _modifiers)
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
-                    continue;
-                
-                childShapes = modifier.Process<List<OShapeInfo>, List<OShapeInfo>>(IOModifier.OModifierCallTime.PreRenderChildren, childShapes) ?? childShapes;
-            }
-
-            if (AutoSizeMode != IOInterface.OAutoSizeMode.None && childShapes.Count > 0)
-            {
-                GetBoundingBox(childShapes, out float minX, out float minY, out float maxX, out float maxY);
-                float childWidth = maxX - minX;
-                float childHeight = maxY - minY;
-                float newX = _absoluteSize.X;
-                float newY = _absoluteSize.Y;
-                bool extendH = AutoSizeMode is IOInterface.OAutoSizeMode.ExtendHorizontally
-                    or IOInterface.OAutoSizeMode.ExtendBoth;
-                bool extendV = AutoSizeMode is IOInterface.OAutoSizeMode.ExtendVertically
-                    or IOInterface.OAutoSizeMode.ExtendBoth;
-                bool shrinkH = AutoSizeMode is IOInterface.OAutoSizeMode.ShrinkHorizontally
-                    or IOInterface.OAutoSizeMode.ShrinkBoth;
-                bool shrinkV = AutoSizeMode is IOInterface.OAutoSizeMode.ShrinkVertically
-                    or IOInterface.OAutoSizeMode.ShrinkBoth;
-
-                if (extendH) newX = childWidth;
-                if (shrinkH) newX = childWidth;
-                if (extendV) newY = childHeight;
-                if (shrinkV) newY = childHeight;
-
-                _absoluteSize = new OVector2<float>(Math.Max(1, newX), Math.Max(1, newY));
-
-                baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
+                foreach (OShapeInfo shape in childInfo.Shapes)
+                    childShapes.Add(shape);
             }
 
             for (int i = 0; i < childShapes.Count; i++)
-            {
-                foreach (IOModifier modifier in _modifiers)
-                {
-                    if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.RenderChildren))
-                        continue;
+                childShapes[i] = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PreRenderChildren, childShapes[i]) ?? childShapes[i];
 
-                    childShapes[i] = modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.RenderChildren, childShapes[i]) ?? childShapes[i];
-                }
-            }
+            for (int i = 0; i < childShapes.Count; i++)
+                childShapes[i] = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.RenderChildren, childShapes[i]) ?? childShapes[i];
 
-            foreach (IOModifier modifier in _modifiers)
-            {
-                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))
-                    continue;
+            for (int i = 0; i < childShapes.Count; i++)
+                childShapes[i] = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PostRenderChildren, childShapes[i]) ?? childShapes[i];
 
-                childShapes = modifier.Process<List<OShapeInfo>, List<OShapeInfo>>(IOModifier.OModifierCallTime.PostRenderChildren, childShapes) ?? childShapes;
-            }
+            if (AutoSizeMode != IOInterface.OAutoSizeMode.None && childShapes.Count > 0)
+                ApplyAutoSize(childShapes, ref baseFrame);
 
-            ORenderInfo renderInfo = new ORenderInfo();
+            ORenderInfo renderInfo = new();
 
             renderInfo.Shapes.Add(baseFrame);
 
-            foreach (OShapeInfo childShape in childShapes)
+            foreach (OShapeInfo shape in childShapes)
             {
-                OShapeInfo clipped = window.Renderer.ApplyMask(childShape);
+                OShapeInfo clipped = window.Renderer.ApplyMask(shape);
 
                 renderInfo.Shapes.Add(new OShapeInfo()
                 {
@@ -1172,6 +1124,74 @@ public static class OkInterface
             }
 
             return renderInfo;
+        }
+        
+        private T? RunModifierPipeline<T, TParams>(IOModifier.OModifierCallTime stage, TParams parameters)
+        {
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.Active || !modifier.CallTime.HasFlag(stage))
+                    continue;
+
+                if (!modifier.CanProcess<T, TParams>())
+                    continue;
+
+                T? result = modifier.Process<T, TParams>(stage, parameters);
+
+                if (result is not null)
+                    return result;
+            }
+
+            return default;
+        }
+
+        private void ApplyAutoSize(List<OShapeInfo> childShapes, ref OShapeInfo baseFrame)
+        {
+            if (AutoSizeMode == IOInterface.OAutoSizeMode.None || childShapes.Count == 0)
+                return;
+
+            GetBoundingBox(childShapes, out float minX, out float minY, out float maxX, out float maxY);
+
+            float childWidth = maxX - minX;
+            float childHeight = maxY - minY;
+            float currentX = _absoluteSize.X;
+            float currentY = _absoluteSize.Y;
+            float newX = currentX;
+            float newY = currentY;
+            float frameLeft = _absolutePosition.X;
+            float frameTop = _absolutePosition.Y;
+            float frameRight = frameLeft + currentX;
+            float frameBottom = frameTop + currentY;
+            bool extendH = AutoSizeMode is IOInterface.OAutoSizeMode.ExtendHorizontally or IOInterface.OAutoSizeMode.ExtendBoth;
+            bool extendV = AutoSizeMode is IOInterface.OAutoSizeMode.ExtendVertically or IOInterface.OAutoSizeMode.ExtendBoth;
+            bool shrinkH = AutoSizeMode is IOInterface.OAutoSizeMode.ShrinkHorizontally or IOInterface.OAutoSizeMode.ShrinkBoth;
+            bool shrinkV = AutoSizeMode is IOInterface.OAutoSizeMode.ShrinkVertically or IOInterface.OAutoSizeMode.ShrinkBoth;
+
+            if (extendH && maxX > frameRight)
+                newX = maxX - frameLeft;
+
+            if (extendH && minX < frameLeft)
+                newX = frameRight - minX;
+
+            if (shrinkH)
+                newX = childWidth;
+
+            newX = Math.Max(1, newX);
+
+            if (extendV && maxY > frameBottom)
+                newY = maxY - frameTop;
+
+            if (extendV && minY < frameTop)
+                newY = frameBottom - minY;
+
+            if (shrinkV)
+                newY = childHeight;
+
+            newY = Math.Max(1, newY);
+
+            _absoluteSize = new OVector2<float>(newX, newY);
+            
+            baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
         }
 
         private static void GetBoundingBox(List<OShapeInfo> shapes, out float minX, out float minY, out float maxX, out float maxY)

@@ -667,9 +667,24 @@ public static class OkInstance
 
         public ORenderInfo? Render()
         {
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.Active)
+                    continue;
+
+                if (
+                    !modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Physics)
+                    && !modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Animation)
+                    && !modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Behavior)
+                )
+                    continue;
+
+                modifier.Process<object, object>(modifier.CallTime, this);
+            }
+
             return null;
         }
-    
+
         // To String
 
         public override string ToString()
@@ -990,9 +1005,21 @@ public static class OkInstance
     
         public ORenderInfo? Render()
         {
-            return _scenes[_active].Render();
+            ORenderInfo? info = null;
+
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRender))
+                    modifier.Process<object, ORenderInfo?>(IOModifier.OModifierCallTime.PreRender, info);
+
+            info = _scenes[_active].Render();
+
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRender))
+                    info = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRender, info);
+
+            return info;
         }
-    
+
         // To String
     
         public override string ToString()
@@ -1337,19 +1364,18 @@ public static class OkInstance
             if (_parent is not OScenes scenes)
                 return null;
 
-            ReadOnlyCollection<OScene> siblings = scenes.GetScenes();
-
-            if (!siblings.Contains(this))
-                return null;
-
-            if (scenes.Active != siblings.IndexOf(this))
+            if (scenes.Active != scenes.GetScenes().IndexOf(this))
                 return null;
 
             ORenderInfo result = new ORenderInfo();
-            List<OGeometryInfo> sceneGeometries = new List<OGeometryInfo>();
-            List<(OGeometryInfo geometry, int layer)> uiGeometries = new List<(OGeometryInfo geometry, int layer)>();
-            List<OShapeInfo> sceneShapes = new List<OShapeInfo>();
-            List<(OShapeInfo shape, int layer)> uiShapes = new List<(OShapeInfo shape, int layer)>();
+            List<OGeometryInfo> sceneGeometries = new();
+            List<(OGeometryInfo geometry, int layer)> uiGeometries = new();
+            List<OShapeInfo> sceneShapes = new();
+            List<(OShapeInfo shape, int layer)> uiShapes = new();
+
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
+                    modifier.Process<object, object>(IOModifier.OModifierCallTime.PreRenderChildren, this);
 
             foreach (IOInstance child in _children)
             {
@@ -1380,21 +1406,24 @@ public static class OkInstance
                     foreach (OShapeInfo shape in info.Shapes)
                         uiShapes.Add((shape, layer));
                 }
+
+                foreach (IOModifier modifier in _modifiers)
+                    if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.RenderChildren))
+                        modifier.Process<object, ORenderInfo?>(IOModifier.OModifierCallTime.RenderChildren, info);
             }
 
-            uiGeometries = uiGeometries.OrderBy(((OGeometryInfo geometry, int layer) entry) => entry.layer).ToList();
-            uiShapes = uiShapes.OrderBy(((OShapeInfo shape, int layer) entry) => entry.layer).ToList();
+            uiGeometries = uiGeometries.OrderBy(e => e.layer).ToList();
+            uiShapes = uiShapes.OrderBy(e => e.layer).ToList();
 
             result.Geometries.AddRange(sceneGeometries);
-
-            foreach ((OGeometryInfo geometry, int layer) entry in uiGeometries)
-                result.Geometries.Add(entry.geometry);
-
+            result.Geometries.AddRange(uiGeometries.Select(e => e.geometry));
             result.Shapes.AddRange(sceneShapes);
+            result.Shapes.AddRange(uiShapes.Select(e => e.shape));
 
-            foreach ((OShapeInfo shape, int layer) entry in uiShapes)
-                result.Shapes.Add(entry.shape);
-
+            foreach (IOModifier modifier in _modifiers)
+                if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))
+                    result = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRenderChildren, result);
+            
             return result;
         }
 
