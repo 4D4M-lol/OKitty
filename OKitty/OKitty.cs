@@ -1318,7 +1318,6 @@ public class OWindow : IOPrototype
     public OMouse Mouse => _mouse;
     public OStorage Storage => _storage;
     public OScenes Scenes => _scenes;
-    public string Icon => "󰍹";
     public OShapeInfo SafeArea { get; private set; }
     public bool Initialized { get; private set; }
     public bool Running { get; private set; }

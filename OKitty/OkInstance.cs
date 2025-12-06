@@ -17,7 +17,6 @@ public static class OkInstance
     {
         // Properties
 
-        public string Icon { get; }
         public string Name { get; set; }
 
         // Methods
@@ -282,7 +281,6 @@ public static class OkInstance
 
         // Properties
 
-        public string Icon { get; }
         public OModifierCallTime CallTime { get; }
         public OModifierPriority Priority { get; }
         public bool Active { get; set; }
@@ -432,7 +430,6 @@ public static class OkInstance
         IOInstance? IOInstance.Parent { get; set; } = null;
         
         public OWindow Window => _window;
-        public string Icon => "";
         public string Name { get; set; } = "OStorage";
         public HashSet<string> Tags { get; } = new HashSet<string>();
         
@@ -707,7 +704,6 @@ public static class OkInstance
     
         public OWindow Window => _window;
         public OScene Main => _main;
-        public string Icon => "󰉏";
         public string Name { get; set; } = "OScenes";
         public HashSet<string> Tags { get; } = new HashSet<string>();
 
@@ -1036,7 +1032,6 @@ public static class OkInstance
         private List<IOInstance> _children;
         private List<IOModifier> _modifiers;
     
-        public string Icon => "󰈟";
         public string Name { get; set; } = "OScene";
         public HashSet<string> Tags { get; } = new HashSet<string>();
         public bool Main { get; private set; } = false;

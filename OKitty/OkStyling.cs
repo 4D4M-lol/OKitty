@@ -738,16 +738,149 @@ public static class OkStyling
 
     // Class
 
+    public class OSizeConstraint : IOModifier
+    {
+        // Properties and Fields
+
+        private IOPrototype? _parent;
+        private bool _active;
+        private OVector2<float> _minSize;
+
+        public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Layout | IOModifier.OModifierCallTime.Behavior;
+        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
+        public OVector2<float> MaxSize = new OVector2<float>(float.MaxValue, float.MaxValue);
+
+        public IOPrototype? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value)
+                    return;
+
+                if (value?.HasModifier<OSizeConstraint>() ?? false)
+                {
+                    ODebugger.Warn($"\"{value.Name}\" already have an OSizeConstraint modifier.");
+
+                    return;
+                }
+
+                if (_parent is OWindow window)
+                    SetWindowSizeConstraint(window.WindowHandle, null, null);
+
+                _parent?.RemoveModifier<OSizeConstraint>();
+
+                _parent = value;
+
+                _parent?.AddModifier(this);
+            }
+        }
+
+        public bool Active
+        {
+            get => _active;
+            set
+            {
+                if (_active == value)
+                    return;
+
+                if (_parent is OWindow window)
+                {
+                    if (value)
+                        SetWindowSizeConstraint(window.WindowHandle, null, null);
+                    else
+                        SetWindowSizeConstraint(window.WindowHandle, _minSize, MaxSize);
+                }
+
+                _active = value;
+            }
+        }
+
+        public OVector2<float> MinSize
+        {
+            get => _minSize;
+            set
+            {
+                if (value <= MaxSize)
+                    _minSize = value;
+            }
+        }
+
+        // Methods and Functions
+
+        public OSizeConstraint(IOPrototype? parent = null)
+        {
+            _active = true;
+            _minSize = new OVector2<float>(float.MinValue, float.MinValue);
+
+            Parent = parent;
+        }
+
+        public bool CanProcess<TReturn, TParams>()
+        {
+            return (typeof(TReturn) == typeof((OVector2<float>, OVector2<float>)) && typeof(TParams) == typeof((OVector2<float>, OVector2<float>)))
+                || (typeof(TReturn) == typeof(object) && typeof(TParams) == typeof(double));
+        }
+
+        public TReturn? Process<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
+        {
+            if (callTime.HasFlag(IOModifier.OModifierCallTime.Layout) && _parent is IOInterface)
+                if (parameters is ValueTuple<OVector2<float>, OVector2<float>> value)
+                {
+                    OVector2<float> size = value.Item1;
+                    float width = MathF.Min(MaxSize.X, MathF.Max(size.X, _minSize.X));
+                    float height = MathF.Min(MaxSize.Y, MathF.Max(size.Y, _minSize.Y));
+
+                    return (TReturn)(object)((new OVector2<float>(width, height), value.Item2));
+                }
+
+            if (callTime.HasFlag(IOModifier.OModifierCallTime.Behavior) && _parent is OWindow window)
+                if (parameters is double)
+                {
+                    SetWindowSizeConstraint(window.WindowHandle, _minSize, MaxSize);
+
+                    return default;
+                }
+
+            return (TReturn)(object)parameters!;
+        }
+
+        private static void SetWindowSizeConstraint(IntPtr handle, OVector2<float>? min, OVector2<float>? max)
+        {
+            if (SDL.IsMainThread())
+            {
+                SDL.SetWindowMinimumSize(handle, (int)(min?.X ?? 0), (int)(min?.Y ?? 0));
+                SDL.SetWindowMaximumSize(handle, (int)(max?.X ?? 0), (int)(max?.Y ?? 0));
+                SDL.SyncWindow(handle);
+            }
+            else
+            {
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    SDL.SetWindowMinimumSize(handle, (int)(min?.X ?? 0), (int)(min?.Y ?? 0));
+                    SDL.SetWindowMaximumSize(handle, (int)(max?.X ?? 0), (int)(max?.Y ?? 0));
+                    SDL.SyncWindow(handle);
+                }, IntPtr.Zero, false);
+            }
+        }
+
+        // To String
+
+        public override string ToString()
+        {
+            return $"<OSizeConstraint Active={Active} MinSize=({MinSize}) MaxSize=({MaxSize})>";
+        }
+    }
+
     public class OAspectRatioConstraint : IOModifier
     {
         // Properties and Fields
 
         private IOPrototype? _parent;
-
-        public string Icon => "󰨤";
+        private bool _active;
+        
         public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Layout | IOModifier.OModifierCallTime.Behavior;
         public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
-        public bool Active { get; set; } = true;
         public float Ratio { get; set; } = 1;
 
         public IOPrototype? Parent
@@ -766,22 +899,7 @@ public static class OkStyling
                 }
 
                 if (_parent is OWindow window)
-                {
-                    if (SDL.IsMainThread())
-                    {
-                        SDL.SetWindowAspectRatio(window.WindowHandle, 0, 0);
-                        SDL.SyncWindow(window.WindowHandle);
-                    }
-                    else
-                    {
-                        SDL.RunOnMainThread((IntPtr _) =>
-                        {
-                            SDL.SetWindowAspectRatio(window.WindowHandle, 0, 0);
-                            SDL.SyncWindow(window.WindowHandle);
-                        }, IntPtr.Zero, false);
-                    }
-                   
-                }
+                    SetWindowRatio(window.WindowHandle, 0);
 
                 _parent?.RemoveModifier<OAspectRatioConstraint>();
 
@@ -791,10 +909,32 @@ public static class OkStyling
             }
         }
 
+        public bool Active
+        {
+            get => _active;
+            set
+            {
+                if (_active == value)
+                    return;
+
+                if (_parent is OWindow window)
+                {
+                    if (value)
+                        SetWindowRatio(window.WindowHandle, Ratio);
+                    else
+                        SetWindowRatio(window.WindowHandle, 0);
+                }
+
+                _active = value;
+            }
+        }
+
         // Methods and Functions
 
         public OAspectRatioConstraint(IOPrototype? parent = null)
         {
+            _active = true;
+
             Parent = parent;
         }
 
@@ -826,24 +966,36 @@ public static class OkStyling
             if (callTime.HasFlag(IOModifier.OModifierCallTime.Behavior) && _parent is OWindow window)
                 if (parameters is double)
                 {
-                    if (SDL.IsMainThread())
-                    {
-                        SDL.SetWindowAspectRatio(window.WindowHandle, Ratio, Ratio);
-                        SDL.SyncWindow(window.WindowHandle);
-                    }
-                    else
-                    {
-                        SDL.RunOnMainThread((IntPtr _) =>
-                        {
-                            SDL.SetWindowAspectRatio(window.WindowHandle, Ratio, Ratio);
-                            SDL.SyncWindow(window.WindowHandle);
-                        }, IntPtr.Zero, false);
-                    }
+                    SetWindowRatio(window.WindowHandle, Ratio);
 
                     return default;
                 }
 
             return (TReturn)(object)parameters!;
+        }
+
+        private static void SetWindowRatio(IntPtr handle, float ratio)
+        {
+            if (SDL.IsMainThread())
+            {
+                SDL.SetWindowAspectRatio(handle, ratio, ratio);
+                SDL.SyncWindow(handle);
+            }
+            else
+            {
+                SDL.RunOnMainThread((IntPtr _) =>
+                {
+                    SDL.SetWindowAspectRatio(handle, ratio, ratio);
+                    SDL.SyncWindow(handle);
+                }, IntPtr.Zero, false);
+            }
+        }
+
+        // To String
+
+        public override string ToString()
+        {
+            return $"<OAspectRatioConstraint Active={Active} Ratio={Ratio}>";
         }
     }
 
@@ -853,7 +1005,6 @@ public static class OkStyling
 
         private IOPrototype? _parent;
 
-        public string Icon => "󱓻";
         public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Render;
         public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
         public bool Active { get; set; } = true;
@@ -971,6 +1122,13 @@ public static class OkStyling
                 return (TReturn)(object)(outputShape);
 
             return (TReturn)(object)original!;
+        }
+
+        // To String
+
+        public override string ToString()
+        {
+            return $"<OCornerStyling Active={Active} TopLeftRadius={TopLeftRadius} TopRightRadius={TopRightRadius} BottomRightRadius={BottomRightRadius} BottomLeftRadius={BottomLeftRadius}>";
         }
     }    
 }

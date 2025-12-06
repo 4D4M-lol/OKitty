@@ -332,7 +332,6 @@ public static class OkInterface
         private List<IOInstance> _children;
         private List<IOModifier> _modifiers;
 
-        public string Icon => "󰹑";
         public IOGui.OGuiType Type => IOGui.OGuiType.Shape;
         public HashSet<string> Tags { get; } = new HashSet<string>();
         public string Name { get; set; } = "OScreenGui";
@@ -702,7 +701,6 @@ public static class OkInterface
         private float _rotation;
         private float _backgroundOpacity;
 
-        public string Icon => "";
         public OVector2<float> AbsoluteSize => _absoluteSize;
         public OVector2<float> AbsolutePosition => _absolutePosition;
         public HashSet<string> Tags { get; } = new HashSet<string>();
