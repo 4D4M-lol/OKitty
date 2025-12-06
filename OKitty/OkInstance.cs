@@ -224,27 +224,49 @@ public static class OkInstance
         [Flags]
         public enum OModifierCallTime
         {
-            PreRendering = 1 << 0,
-            Rendering = 1 << 1,
-            PostRendering = 1 << 2,
-            PreRenderingChild = 1 << 3,
-            RenderingChild = 1 <<  4,
-            PostRenderingChild = 1 << 5,
-            Extra1 = 1 << 6,
-            Extra2 = 1 << 7,
-            Extra3 = 1 << 8,
-            Extra4 = 1 << 9,
-            Extra5 = 1 << 10,
-            Extra6 = 1 << 11,
-            Extra7 = 1 << 12,
-            Extra8 = 1 << 13,
-            Extra9 = 1 << 14,
-            Extra10 = 1 << 15,
-            Extra11 = 1 << 16,
-            Extra12 = 1 << 17,
-            Extra13 = 1 << 18,
-            Extra14 = 1 << 19,
-            Extra15 = 1 << 20
+            // None
+
+            None = 0,
+
+            // Layout
+
+            Layout = 1 << 0,
+            LayoutBeforeChildren = 1 << 1,
+            LayoutChildren = 1 << 2,
+
+            // Render
+
+            PreRender = 1 << 3,
+            Render = 1 << 4,
+            PostRender = 1 << 5,
+
+            // Children
+
+            PreRenderChildren = 1 << 6,
+            RenderChildren = 1 << 7,
+            PostRenderChildren = 1 << 8,
+
+            // Gameplay & Logic
+
+            Physics = 1 << 9,
+            Animation = 1 << 10,
+            Behavior = 1 << 11,
+
+            // Extras
+
+            Extra1 = 1 << 12,
+            Extra2 = 1 << 13,
+            Extra3 = 1 << 14,
+            Extra4 = 1 << 15,
+            Extra5 = 1 << 16,
+            Extra6 = 1 << 17,
+            Extra7 = 1 << 18,
+            Extra8 = 1 << 19,
+            Extra9 = 1 << 20,
+
+            // All
+
+            All = ~0
         }
 
         public enum OModifierPriority
@@ -263,12 +285,13 @@ public static class OkInstance
         public string Icon { get; }
         public OModifierCallTime CallTime { get; }
         public OModifierPriority Priority { get; }
+        public bool Active { get; set; }
         public IOPrototype? Parent { get; set; }
 
         // Methods
 
-        public TDelegate? GetProcessor<TDelegate>()
-            where TDelegate : Delegate;
+        public TReturn? Process<TReturn, TParams>(OModifierCallTime callTime, TParams parameters);
+        public bool CanProcess<TReturn, TParams>();
     }
 
     // Records
@@ -480,6 +503,10 @@ public static class OkInstance
             }
 
             _modifiers.Add(modifier);
+
+            _modifiers = _modifiers
+                .OrderByDescending((IOModifier modifier) => modifier.Priority)
+                .ToList();
 
             if (modifier.Parent != this)
                 modifier.Parent = this;
@@ -795,6 +822,10 @@ public static class OkInstance
 
             _modifiers.Add(modifier);
 
+            _modifiers = _modifiers
+                .OrderByDescending((IOModifier modifier) => modifier.Priority)
+                .ToList();
+
             if (modifier.Parent != this)
                 modifier.Parent = this;
         }
@@ -1104,6 +1135,10 @@ public static class OkInstance
             }
 
             _modifiers.Add(modifier);
+
+            _modifiers = _modifiers
+                .OrderByDescending((IOModifier modifier) => modifier.Priority)
+                .ToList();
 
             if (modifier.Parent != this)
                 modifier.Parent = this;

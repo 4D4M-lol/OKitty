@@ -1614,7 +1614,7 @@ public class OWindow : IOPrototype
         Visible = false;
         FramePerSecond = 0;
 
-        if (options.Renderer.Window is OWindow)
+        if (options.Renderer.Window is not null)
         {
             ODebugger.Warn("The provided renderer is already parented into another window.");
 
@@ -1641,6 +1641,7 @@ public class OWindow : IOPrototype
         return _modifiers.OfType<TModifier>().FirstOrDefault();
     }
 
+
     public void AddModifier<TModifier>(TModifier modifier)
         where TModifier : class, IOModifier
     {
@@ -1652,6 +1653,10 @@ public class OWindow : IOPrototype
         }
 
         _modifiers.Add(modifier);
+
+        _modifiers = _modifiers
+            .OrderByDescending((IOModifier modifier) => modifier.Priority)
+            .ToList();
 
         if (modifier.Parent != this)
             modifier.Parent = this;

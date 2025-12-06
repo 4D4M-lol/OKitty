@@ -1,6 +1,11 @@
 // Imports
 
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using static OKitty.OkInstance;
+using static OKitty.OkInterface;
 using static OKitty.OkMath;
+using static OKitty.OkScript;
 
 namespace OKitty;
 
@@ -353,7 +358,7 @@ public static class OkStyling
         public static readonly OColor Pink = new OColor(OColors.Pink);
         public static readonly OColor White = new OColor(OColors.White);
         public static readonly OColor Black = new OColor(OColors.Black);
-        public static readonly OColor Transparent = new OColor((uint)0);
+        public static readonly OColor Transparent = new OColor(0U);
         
         // Properties and Fields
         
@@ -730,4 +735,133 @@ public static class OkStyling
             return $"#{Hex:x8}".ToUpper();
         }
     }
+
+    // Class
+
+    public class OCornerStyling : IOModifier
+    {
+        // Properties and Fields
+
+        private IOPrototype? _parent;
+
+        public string Icon => "󱓻";
+        public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Render;
+        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
+        public bool Active { get; set; } = true;
+        public int Smoothness { get; set; } = 24;
+        public OLayoutVector<float, float> TopLeftRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
+        public OLayoutVector<float, float> TopRightRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
+        public OLayoutVector<float, float> BottomLeftRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
+        public OLayoutVector<float, float> BottomRightRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
+
+        public OLayoutVector<float, float> Radius
+        {
+            set
+            {
+                TopLeftRadius = value;
+                TopRightRadius = value;
+                BottomLeftRadius = value;
+                BottomRightRadius = value;
+            }
+        }
+
+        public IOPrototype? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value)
+                    return;
+
+                if (value?.HasModifier<OCornerStyling>() ?? false)
+                {
+                    ODebugger.Warn($"\"{value.Name}\" already have an OCornerStyling modifier.");
+
+                    return;
+                }
+
+                _parent?.RemoveModifier<OCornerStyling>();
+
+                _parent = value;
+
+                _parent?.AddModifier(this);
+            }
+        }
+
+        // Methods and Functions
+
+        public OCornerStyling(IOPrototype? parent = null)
+        {
+            Parent = parent;
+        }
+
+        public bool CanProcess<TReturn, TParams>()
+        {
+            return typeof(TReturn) == typeof(OShapeInfo) && typeof(TParams) == typeof(OShapeInfo);
+        }
+
+        public TReturn? Process<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
+        {
+            if (!CanProcess<TReturn, TParams>())
+                return CastBack<TReturn, TParams>(default!, parameters);
+
+            if (callTime != IOModifier.OModifierCallTime.Render)
+                return CastBack<TReturn, TParams>(default!, parameters);
+
+            if (parameters is not OShapeInfo shape)
+                return CastBack<TReturn, TParams>(default!, parameters);
+
+            if (_parent is not IOInterface gui)
+                return CastBack<TReturn, TParams>(shape, parameters);
+            
+            ReadOnlyCollection<OVector2<float>> points = shape.GetPoints();
+
+            if (shape.Lines.Count != 4 || points.Count != 4)
+                return CastBack<TReturn, TParams>(shape, parameters);
+            
+            for (int i = 0; i < 4; i++)
+            {
+                OVector2<float> current = points[i];
+                OVector2<float> prev = points[(i + 3) % 4];
+                OVector2<float> next = points[(i + 1) % 4];
+                OVector2<float> v1 = prev - current;
+                OVector2<float> v2 = next - current;
+                float dot = OVector2<float>.Dot(v1, v2);
+                float det = v1.X * v2.Y - v1.Y * v2.X;
+                float between = MathF.Atan2(det, dot) * (180f / MathF.PI);
+                float angle = MathF.Abs(between);
+
+                if (MathF.Abs(angle - 90f) > 5f)
+                    return (TReturn)(object)shape;
+            }
+
+            float min = MathF.Min(gui.AbsoluteSize.X, gui.AbsoluteSize.Y);
+            float max = min / 2;
+            float topLeftRadius = (min * TopLeftRadius.Scale) + TopLeftRadius.Offset;
+            float topRightRadius = (min * TopRightRadius.Scale) + TopRightRadius.Offset;
+            float bottomRightRadius = (min * BottomRightRadius.Scale) + BottomRightRadius.Offset;
+            float bottomLeftRadius = (min * BottomLeftRadius.Scale) + BottomLeftRadius.Offset;
+
+            topLeftRadius = MathF.Min(topLeftRadius, max);
+            topRightRadius = MathF.Min(topRightRadius, max);
+            bottomRightRadius = MathF.Min(bottomRightRadius, max);
+            bottomLeftRadius = MathF.Min(bottomLeftRadius, max);
+
+            (float topLeft, float topRight, float bottomRight, float bottomLeft) radius = (topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
+            OShapeInfo rounded = OShapes.RoundedRectangle(gui.AbsoluteSize, gui.AbsolutePosition, gui.Rotation, shape.Layer, radius, shape.Color, Smoothness, shape.Mask);
+
+            return CastBack<TReturn, TParams>(rounded, parameters);
+        }
+        
+        private static TReturn? CastBack<TReturn, TParams>(OShapeInfo outputShape, TParams original)
+        {
+            if (typeof(TReturn) == typeof(OShapeInfo))
+                return (TReturn)(object)outputShape;
+
+            if (typeof(TReturn) == typeof(ValueTuple<OShapeInfo>))
+                return (TReturn)(object)(outputShape);
+
+            return (TReturn)(object)original!;
+        }
+    }    
 }

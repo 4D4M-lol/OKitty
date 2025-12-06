@@ -4,6 +4,7 @@ using static OKitty.OkInstance;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
+using System.Reflection;
 using System.Collections.ObjectModel;
 
 namespace OKitty;
@@ -18,7 +19,7 @@ public static class OkInterface
     {
         // Enums
 
-        public enum OAutoSizeRule
+        public enum OAutoSizeMode
         {
             None,
             ExtendHorizontally,
@@ -29,13 +30,20 @@ public static class OkInterface
             ShrinkBoth
         }
 
+        // Static Properties
+
+        public static readonly Type PreRenderModifierDelegate = typeof(Func<,,,>)
+            .MakeGenericType(typeof(OWindow), typeof(OVector2<float>), typeof(OVector2<float>), typeof(ValueTuple<OVector2<float>, OVector2<float>>));
+        public static readonly Type RenderModifierDelegate = typeof(Func<,>)
+            .MakeGenericType(typeof(OShapeInfo), typeof(OShapeInfo));
+
         // Properties
 
         public bool Active { get; set; }
         public bool Visible { get; set; }
         public OVector2<float> AbsoluteSize { get; }
         public OVector2<float> AbsolutePosition { get; }
-        public OAutoSizeRule AutoSizeRule { get; set; }
+        public OAutoSizeMode AutoSizeMode { get; set; }
         public OLayoutVector2<float, float> Size { get; set; }
         public OLayoutVector2<float, float> Position { get; set; }
         public float Rotation { get; set; }
@@ -223,10 +231,96 @@ public static class OkInterface
 
             return shape;
         }
-
-        public static OShapeInfo Square(float size, OVector2<float> position, float rotation, int layer, OColor color, OShapeInfo? mask = null)
+        
+        public static OShapeInfo RoundedRectangle(
+            OVector2<float> size, OVector2<float> position, float rotation, int layer, (float topLeft, float topRight, float bottomRight, float bottomLeft) radius, OColor color, 
+            int smoothness = 24, OShapeInfo? mask = null
+        )
         {
-            return Rectangle(new OVector2<float>(size, size), position, rotation, layer, color, mask);
+            float tl = MathF.Max(0, radius.topLeft);
+            float tr = MathF.Max(0, radius.topRight);
+            float br = MathF.Max(0, radius.bottomRight);
+            float bl = MathF.Max(0, radius.bottomLeft);
+            float width = size.X;
+            float height = size.Y;
+            List<OVector2<float>> points = new List<OVector2<float>>();
+
+            AddArc(points, new OVector2<float>(tl, tl), 180, 270, tl, smoothness);
+            AddArc(points, new OVector2<float>(width - tr, tr), 270, 360, tr, smoothness);
+            AddArc(points, new OVector2<float>(width - br, height - br), 0, 90, br, smoothness);
+            AddArc(points, new OVector2<float>(bl, height - bl), 90, 180, bl, smoothness);
+
+            if (rotation != 0)
+            {
+                OVector2<float> center = size / 2;
+                float rad = rotation * MathF.PI / 180.0f;
+                float cos = MathF.Cos(rad);
+                float sin = MathF.Sin(rad);
+
+                for (int i = 0; i < points.Count; i++)
+                {
+                    OVector2<float> point = points[i];
+
+                    points[i] = new OVector2<float>(
+                        ((point.X - center.X) * cos - (point.Y - center.Y) * sin) + center.X,
+                        ((point.X - center.X) * sin + (point.Y - center.Y) * cos) + center.Y
+                    );
+                }
+            }
+
+            for (int i = 0; i < points.Count; i++)
+                points[i] += position;
+
+            List<OLineInfo> lines = new List<OLineInfo>();
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                lines.Add(new OLineInfo()
+                {
+                    Start = points[i],
+                    End = points[(i + 1) % points.Count],
+                    Color = color
+                });
+            }
+
+            return new OShapeInfo()
+            {
+                Lines = lines,
+                Mask = mask,
+                Color = color,
+                Layer = layer
+            };
+        }
+
+        public static OShapeInfo RoundedRectangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, float radius, OColor color, int smoothness = 24, OShapeInfo? mask = null)
+        {
+            return RoundedRectangle(size, position, rotation, layer, (radius, radius, radius, radius), color, smoothness, mask);
+        }
+
+        public static OShapeInfo Circle(float radius, OVector2<float> position, int layer, OColor color, int smoothness = 24, OShapeInfo? mask = null)
+        {
+            float diameter = radius * 2;
+            OVector2<float> size = new OVector2<float>(diameter, diameter);
+            OVector2<float> center = new OVector2<float>(position.X - radius, position.Y - radius);
+
+            return RoundedRectangle(size, center, 0, layer, radius, color, smoothness, mask);
+        }
+
+        private static void AddArc(List<OVector2<float>> points, OVector2<float> center, float startAngleDeg, float endAngleDeg, float r, int smoothness)
+        {
+            if (r <= 0)
+                return;
+
+            float start = startAngleDeg * MathF.PI / 180;
+            float end = endAngleDeg * MathF.PI / 180;
+
+            for (int i = 0; i <= smoothness; i++)
+            {
+                float t = i / (float)smoothness;
+                float angle = start + (end - start) * t;
+
+                points.Add(new OVector2<float>(center.X + MathF.Cos(angle) * r, center.Y + MathF.Sin(angle) * r));
+            }
         }
     }
 
@@ -596,7 +690,7 @@ public static class OkInterface
         public string Name { get; set; } = "OFrame";
         public bool Active { get; set; } = true;
         public bool Visible { get; set; } = true;
-        public IOInterface.OAutoSizeRule AutoSizeRule { get; set; } = IOInterface.OAutoSizeRule.None;
+        public IOInterface.OAutoSizeMode AutoSizeMode { get; set; } = IOInterface.OAutoSizeMode.None;
         public OLayoutVector2<float, float> Size { get; set; } = OLayoutVector2<float, float>.Half;
         public OLayoutVector2<float, float> Position { get; set; } = OLayoutVector2<float, float>.Zero;
         public int Layer { get; set; } = 0;
@@ -704,6 +798,10 @@ public static class OkInterface
             }
 
             _modifiers.Add(modifier);
+
+            _modifiers = _modifiers
+                .OrderByDescending((IOModifier modifier) => modifier.Priority)
+                .ToList();
 
             if (modifier.Parent != this)
                 modifier.Parent = this;
@@ -881,7 +979,7 @@ public static class OkInterface
                 Name = Name,
                 Active = Active,
                 Visible = Visible,
-                AutoSizeRule = AutoSizeRule,
+                AutoSizeMode = AutoSizeMode,
                 Size = Size,
                 Position = Position,
                 Rotation = _rotation,
@@ -923,7 +1021,7 @@ public static class OkInterface
                 return null;
 
             OWindow? window = _parent.FindFirstAncestorWhichIsA<OWindow>();
-
+            
             if (window is null)
                 return null;
 
@@ -941,8 +1039,57 @@ public static class OkInterface
                 );
             }
 
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Layout))
+                    continue;
+
+                (OVector2<float> size, OVector2<float> position) result = modifier.Process<(OVector2<float>, OVector2<float>), (OVector2<float>, OVector2<float>)>(
+                    IOModifier.OModifierCallTime.Layout,
+                    (_absoluteSize, _absolutePosition)
+                );
+
+                _absoluteSize = result.size;
+                _absolutePosition = result.position;
+            }
+
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.LayoutChildren))
+                    continue;
+
+                modifier.Process<object, (OVector2<float>, OVector2<float>)>(IOModifier.OModifierCallTime.LayoutChildren, (_absoluteSize, _absolutePosition));
+            }
+
             OShapeInfo baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
-            List<OShapeInfo> childShapes = new List<OShapeInfo>();
+
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRender))
+                    continue;
+                
+                baseFrame = modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PreRender, baseFrame) ?? baseFrame;
+            }
+
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.Render))
+                    continue;
+
+                baseFrame = modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.Render, baseFrame) ?? baseFrame;
+            }
+
+            foreach (IOModifier modifier in _modifiers )
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRender))
+                    continue;
+                
+                baseFrame =
+                    modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PostRender, baseFrame) ??
+                    baseFrame;
+            }
+
+            List<OShapeInfo> childShapes = new();
 
             foreach (IOInstance child in _children)
             {
@@ -954,52 +1101,58 @@ public static class OkInterface
                 childShapes.AddRange(childInfo.Shapes);
             }
 
-            if (AutoSizeRule != IOInterface.OAutoSizeRule.None && childShapes.Count > 0)
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
+                    continue;
+                
+                childShapes = modifier.Process<List<OShapeInfo>, List<OShapeInfo>>(IOModifier.OModifierCallTime.PreRenderChildren, childShapes) ?? childShapes;
+            }
+
+            if (AutoSizeMode != IOInterface.OAutoSizeMode.None && childShapes.Count > 0)
             {
                 GetBoundingBox(childShapes, out float minX, out float minY, out float maxX, out float maxY);
-
                 float childWidth = maxX - minX;
                 float childHeight = maxY - minY;
-                float currentX = _absoluteSize.X;
-                float currentY = _absoluteSize.Y;
-                float newX = currentX;
-                float newY = currentY;
-                float frameLeft = _absolutePosition.X;
-                float frameTop = _absolutePosition.Y;
-                float frameRight = frameLeft + currentX;
-                float frameBottom = frameTop + currentY;
-                bool extendH = AutoSizeRule is IOInterface.OAutoSizeRule.ExtendHorizontally or IOInterface.OAutoSizeRule.ExtendBoth;
-                bool extendV = AutoSizeRule is IOInterface.OAutoSizeRule.ExtendVertically or IOInterface.OAutoSizeRule.ExtendBoth;
-                bool shrinkH = AutoSizeRule is IOInterface.OAutoSizeRule.ShrinkHorizontally or IOInterface.OAutoSizeRule.ShrinkBoth;
-                bool shrinkV = AutoSizeRule is IOInterface.OAutoSizeRule.ShrinkVertically or IOInterface.OAutoSizeRule.ShrinkBoth;
+                float newX = _absoluteSize.X;
+                float newY = _absoluteSize.Y;
+                bool extendH = AutoSizeMode is IOInterface.OAutoSizeMode.ExtendHorizontally
+                    or IOInterface.OAutoSizeMode.ExtendBoth;
+                bool extendV = AutoSizeMode is IOInterface.OAutoSizeMode.ExtendVertically
+                    or IOInterface.OAutoSizeMode.ExtendBoth;
+                bool shrinkH = AutoSizeMode is IOInterface.OAutoSizeMode.ShrinkHorizontally
+                    or IOInterface.OAutoSizeMode.ShrinkBoth;
+                bool shrinkV = AutoSizeMode is IOInterface.OAutoSizeMode.ShrinkVertically
+                    or IOInterface.OAutoSizeMode.ShrinkBoth;
 
-                if (extendH && maxX > frameRight)
-                    newX = maxX - frameLeft;
-                
-                if (extendH && minX < frameLeft)
-                    newX = frameRight - minX;
+                if (extendH) newX = childWidth;
+                if (shrinkH) newX = childWidth;
+                if (extendV) newY = childHeight;
+                if (shrinkV) newY = childHeight;
 
-                if (shrinkH)
-                    newX = childWidth;
-
-                newX = Math.Max(newX, 1);
-
-                if (extendV && maxY > frameBottom)
-                    newY = maxY - frameTop;
-                
-                if (extendV && minY < frameTop)
-                    newY = frameBottom - minY;
-
-                if (shrinkV)
-                    newY = childHeight;
-
-                newY = Math.Max(newY, 1);
-
-                _absoluteSize = new OVector2<float>(newX, newY);
+                _absoluteSize = new OVector2<float>(Math.Max(1, newX), Math.Max(1, newY));
 
                 baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
             }
 
+            for (int i = 0; i < childShapes.Count; i++)
+            {
+                foreach (IOModifier modifier in _modifiers)
+                {
+                    if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.RenderChildren))
+                        continue;
+
+                    childShapes[i] = modifier.Process<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.RenderChildren, childShapes[i]) ?? childShapes[i];
+                }
+            }
+
+            foreach (IOModifier modifier in _modifiers)
+            {
+                if (!modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))
+                    continue;
+
+                childShapes = modifier.Process<List<OShapeInfo>, List<OShapeInfo>>(IOModifier.OModifierCallTime.PostRenderChildren, childShapes) ?? childShapes;
+            }
 
             ORenderInfo renderInfo = new ORenderInfo();
 

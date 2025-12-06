@@ -570,7 +570,7 @@ public static class OkMath
         
         // Methods and Functions
 
-        OLayoutVector(TScale? scale = default, TOffset? offset = default)
+        public OLayoutVector(TScale? scale = default, TOffset? offset = default)
         {
             Scale = scale ?? TScale.Zero;
             Offset = offset ?? TOffset.Zero;

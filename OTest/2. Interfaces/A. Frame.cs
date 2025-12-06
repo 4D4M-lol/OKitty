@@ -8,7 +8,7 @@
 //   - Frame rotation
 //   - Layering (render order)
 //   - Clipping (child rendering restriction)
-//   - Extend and Shrink auto-size rules
+//   - Extend and Shrink auto-size modes
 //   - Real-time dynamic auto resizing caused by child movement
 //
 // Result:
@@ -65,7 +65,7 @@ public static class Frame
             Layer = 1,
             BackgroundColor = OColor.Red,
             Clip = true,
-            AutoSizeRule = IOInterface.OAutoSizeRule.None
+            AutoSizeMode = IOInterface.OAutoSizeMode.None
         };
 
         // Notice: Uses shrink-both autosizing.
@@ -77,7 +77,7 @@ public static class Frame
             BackgroundColor = OColor.Blue,
             Layer = 2,
             Clip = true,
-            AutoSizeRule = IOInterface.OAutoSizeRule.ShrinkBoth
+            AutoSizeMode = IOInterface.OAutoSizeMode.ShrinkBoth
         };
 
         // This frame moves in absolute pixels so autosize works properly.
@@ -92,7 +92,7 @@ public static class Frame
         };
 
         // Moves the green frame in absolute coordinates, causing
-        // the blue frame to shrink or expand based on autosize rules.
+        // the blue frame to shrink or expand based on autosize modes.
 
         window.OnUpdate += Update;
 

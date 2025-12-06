@@ -364,18 +364,16 @@ public static class OkInput
                 return;
             }
 
-            (float x, float y) = (0, 0);
-
             if (SDL.IsMainThread())
             {
                 SDL.AddEventWatch(_filter, IntPtr.Zero);
-                SDL.GetMouseState(out x, out y);
+                SDL.GetMouseState(out float _, out float _);
             }
             else
                 SDL.RunOnMainThread((IntPtr _) =>
                 {
                     SDL.AddEventWatch(_filter, IntPtr.Zero);
-                    SDL.GetMouseState(out x, out y);
+                    SDL.GetMouseState(out float _, out float _);
                 }, IntPtr.Zero, true);
 
             Initialized = true;
@@ -386,7 +384,7 @@ public static class OkInput
         
         public void Press(OKeyboardKey key, OModifierKey modifier = OModifierKey.None, bool release = true)
         {
-            SDL.Event ev = new();
+            SDL.Event ev = new SDL.Event();
 
             ev.Type = (uint)SDL.EventType.KeyDown;
             ev.Key.Key = (SDL.Keycode)key;
@@ -429,7 +427,7 @@ public static class OkInput
 
         public void Release(OKeyboardKey key, OModifierKey modifier = OModifierKey.None)
         {
-            SDL.Event ev = new();
+            SDL.Event ev = new SDL.Event();
 
             ev.Type = (uint)SDL.EventType.KeyUp;
             ev.Key.Key = (SDL.Keycode)key;
