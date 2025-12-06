@@ -1,11 +1,11 @@
 // Imports
 
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using static OKitty.OkInstance;
 using static OKitty.OkInterface;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
+using SDL3;
+using System.Collections.ObjectModel;
 
 namespace OKitty;
 
@@ -737,6 +737,115 @@ public static class OkStyling
     }
 
     // Class
+
+    public class OAspectRatioConstraint : IOModifier
+    {
+        // Properties and Fields
+
+        private IOPrototype? _parent;
+
+        public string Icon => "󰨤";
+        public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Layout | IOModifier.OModifierCallTime.Behavior;
+        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
+        public bool Active { get; set; } = true;
+        public float Ratio { get; set; } = 1;
+
+        public IOPrototype? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value)
+                    return;
+
+                if (value?.HasModifier<OAspectRatioConstraint>() ?? false)
+                {
+                    ODebugger.Warn($"\"{value.Name}\" already have an OAspectRatioConstraint modifier.");
+
+                    return;
+                }
+
+                if (_parent is OWindow window)
+                {
+                    if (SDL.IsMainThread())
+                    {
+                        SDL.SetWindowAspectRatio(window.WindowHandle, 0, 0);
+                        SDL.SyncWindow(window.WindowHandle);
+                    }
+                    else
+                    {
+                        SDL.RunOnMainThread((IntPtr _) =>
+                        {
+                            SDL.SetWindowAspectRatio(window.WindowHandle, 0, 0);
+                            SDL.SyncWindow(window.WindowHandle);
+                        }, IntPtr.Zero, false);
+                    }
+                   
+                }
+
+                _parent?.RemoveModifier<OAspectRatioConstraint>();
+
+                _parent = value;
+
+                _parent?.AddModifier(this);
+            }
+        }
+
+        // Methods and Functions
+
+        public OAspectRatioConstraint(IOPrototype? parent = null)
+        {
+            Parent = parent;
+        }
+
+        public bool CanProcess<TReturn, TParams>()
+        {
+            return (typeof(TReturn) == typeof((OVector2<float>, OVector2<float>)) && typeof(TParams) == typeof((OVector2<float>, OVector2<float>)))
+                || (typeof(TReturn) == typeof(object) && typeof(TParams) == typeof(double));
+        }
+
+        public TReturn? Process<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
+        {
+            if (callTime.HasFlag(IOModifier.OModifierCallTime.Layout) && _parent is IOInterface)
+                if (parameters is ValueTuple<OVector2<float>, OVector2<float>> value && Ratio > 0)
+                {
+                    OVector2<float> size = value.Item1;
+                    float width = size.X;
+                    float height = size.Y;
+                    float targetWidth = height * Ratio;
+                    float targetHeight = width / Ratio;
+
+                    if (targetWidth <= width)
+                        width = targetWidth;
+                    else
+                        height = targetHeight;
+
+                    return (TReturn)(object)((new OVector2<float>(width, height), value.Item2));
+                }
+
+            if (callTime.HasFlag(IOModifier.OModifierCallTime.Behavior) && _parent is OWindow window)
+                if (parameters is double)
+                {
+                    if (SDL.IsMainThread())
+                    {
+                        SDL.SetWindowAspectRatio(window.WindowHandle, Ratio, Ratio);
+                        SDL.SyncWindow(window.WindowHandle);
+                    }
+                    else
+                    {
+                        SDL.RunOnMainThread((IntPtr _) =>
+                        {
+                            SDL.SetWindowAspectRatio(window.WindowHandle, Ratio, Ratio);
+                            SDL.SyncWindow(window.WindowHandle);
+                        }, IntPtr.Zero, false);
+                    }
+
+                    return default;
+                }
+
+            return (TReturn)(object)parameters!;
+        }
+    }
 
     public class OCornerStyling : IOModifier
     {

@@ -1957,6 +1957,7 @@ public class OWindow : IOPrototype
         red = (byte)(red * opacity);
         green = (byte)(green * opacity);
         blue = (byte)(blue * opacity);
+        
         SDL.SetRenderDrawColor(_sdlRenderer, red, green, blue, alpha);
         SDL.SetRenderDrawBlendMode(_sdlRenderer, SDL.BlendMode.None);
         SDL.RenderClear(_sdlRenderer);
@@ -1982,26 +1983,29 @@ public class OWindow : IOPrototype
         return null;
     }
 
-
-    private T? RunModifierPipeline<T, TParams>(IOModifier.OModifierCallTime stage, TParams parameters)
+    private TReturn RunModifierPipeline<TReturn, TParams>(IOModifier.OModifierCallTime phase, TParams parameters)
     {
+        object current = parameters!;
+
         foreach (IOModifier modifier in _modifiers)
         {
-            if (!modifier.Active || !modifier.CallTime.HasFlag(stage))
+            if (!modifier.Active)
                 continue;
 
-            if (!modifier.CanProcess<T, TParams>())
+            if (!modifier.CallTime.HasFlag(phase))
                 continue;
 
-            T? result = modifier.Process<T, TParams>(stage, parameters);
+            if (!modifier.CanProcess<TReturn, TParams>())
+                continue;
 
-            if (result is not null)
-                return result;
+            TReturn? result = modifier.Process<TReturn, TParams>(phase, (TParams)current);
+
+            if (result != null)
+                current = result;
         }
 
-        return default;
+        return (TReturn)current;
     }
-
 
     private bool Filter(IntPtr _, ref SDL.Event ev)
     {
