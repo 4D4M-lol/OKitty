@@ -1793,7 +1793,6 @@ public class OWindow : IOPrototype
         if (!Initialized)
         {
             ODebugger.Warn("Window must be initialized before being ran.\n");
-            
             return;
         }
 
@@ -1804,10 +1803,28 @@ public class OWindow : IOPrototype
 
         SDL.RunOnMainThread((IntPtr _) =>
         {
+            ulong lastFrameTime = SDL.GetTicks();
+            
             while (Running)
             {
-                Render();
-                SDL.WaitEventTimeout(out SDL.Event _, Delay);
+                ulong currentTime = SDL.GetTicks();
+                ulong deltaTime = currentTime - lastFrameTime;
+                
+                // Only render if enough time has passed (cap at 60 FPS)
+                if (deltaTime >= (ulong)Delay)  // Delay is in milliseconds (16ms ≈ 60 FPS)
+                {
+                    Render();
+                    lastFrameTime = currentTime;
+                }
+                
+                // Process events without blocking
+                while (SDL.PollEvent(out SDL.Event ev))
+                {
+                    // Process events here if needed
+                }
+                
+                // Small sleep to prevent 100% CPU usage
+                SDL.Delay(1);
             }
         }, IntPtr.Zero, true);
     }
@@ -1958,18 +1975,19 @@ public class OWindow : IOPrototype
         if (!Visible && !RenderWhileHidden)
             return null;
 
+        IOModifier[] modifiers = _modifiers.ToArray();
         ulong currentTickTime = Ticks;
         double deltaTime = (currentTickTime - _lastTickTime) / 1000.0;
 
         _lastTickTime = currentTickTime;
 
-        RunModifierPipeline<object, double>(IOModifier.OModifierCallTime.Physics, deltaTime);
-        RunModifierPipeline<object, double>(IOModifier.OModifierCallTime.Animation, deltaTime);
-        RunModifierPipeline<object, double>(IOModifier.OModifierCallTime.Behavior, deltaTime);
+        RunModifierPipeline<object, double>(modifiers, IOModifier.OModifierCallTime.Physics, deltaTime);
+        RunModifierPipeline<object, double>(modifiers, IOModifier.OModifierCallTime.Animation, deltaTime);
+        RunModifierPipeline<object, double>(modifiers, IOModifier.OModifierCallTime.Behavior, deltaTime);
 
         OColor windowColor = BackgroundColor;
 
-        windowColor = RunModifierPipeline<OColor, OColor>(IOModifier.OModifierCallTime.PreRender, windowColor);
+        windowColor = RunModifierPipeline<OColor, OColor>(modifiers, IOModifier.OModifierCallTime.PreRender, windowColor);
 
         (byte alpha, byte red, byte green, byte blue) = windowColor.Argb;
         float opacity = alpha / 255f;
@@ -1988,7 +2006,7 @@ public class OWindow : IOPrototype
         if (renderInfo is not null)
             _renderer.RenderDrawings(renderInfo.Drawings);
 
-        RunModifierPipeline<object, object>(IOModifier.OModifierCallTime.PostRender, new object());
+        RunModifierPipeline<object, object>(modifiers, IOModifier.OModifierCallTime.PostRender, new object());
 
         if (!PresentAfterCallback)
             SDL.RenderPresent(_sdlRenderer);
@@ -2003,11 +2021,11 @@ public class OWindow : IOPrototype
         return null;
     }
 
-    private TReturn RunModifierPipeline<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
+    private TReturn RunModifierPipeline<TReturn, TParams>(IOModifier[] modifiers, IOModifier.OModifierCallTime callTime, TParams parameters)
     {
         object? current = parameters;
 
-        foreach (IOModifier modifier in _modifiers)
+        foreach (IOModifier modifier in modifiers)
         {
             if (!modifier.Active || !modifier.CallTime.HasFlag(callTime))
                 continue;

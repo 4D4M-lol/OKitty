@@ -225,23 +225,51 @@ public static class OkInterface
         }
         
         public static OShapeInfo RoundedRectangle(
-            OVector2<float> size, OVector2<float> position, float rotation, int layer, (float topLeft, float topRight, float bottomRight, float bottomLeft) radius, OColor color, 
+            OVector2<float> size, OVector2<float> position, float rotation, int layer,  (float topLeft, float topRight, float bottomRight, float bottomLeft) radius, OColor color,
             int smoothness = 24, OShapeInfo? mask = null
         )
         {
-            float tl = MathF.Max(0, radius.topLeft);
-            float tr = MathF.Max(0, radius.topRight);
-            float br = MathF.Max(0, radius.bottomRight);
-            float bl = MathF.Max(0, radius.bottomLeft);
             float width = size.X;
             float height = size.Y;
+            float maxRadius = MathF.Min(width, height) / 2;
+            float tl = Math.Clamp(radius.topLeft, 0, maxRadius);
+            float tr = Math.Clamp(radius.topRight, 0, maxRadius);
+            float br = Math.Clamp(radius.bottomRight, 0, maxRadius);
+            float bl = Math.Clamp(radius.bottomLeft, 0, maxRadius);
             List<OVector2<float>> points = new List<OVector2<float>>();
 
-            AddArc(points, new OVector2<float>(tl, tl), 180, 270, tl, smoothness);
-            AddArc(points, new OVector2<float>(width - tr, tr), 270, 360, tr, smoothness);
-            AddArc(points, new OVector2<float>(width - br, height - br), 0, 90, br, smoothness);
-            AddArc(points, new OVector2<float>(bl, height - bl), 90, 180, bl, smoothness);
+            if (tl > 0)
+                AddArc(points, new OVector2<float>(tl, tl), 180, 270, tl, smoothness);
+            else
+                points.Add(new OVector2<float>(0, 0));
+            
+            if (tr > 0)
+                points.Add(new OVector2<float>(width - tr, 0));
+            else
+                points.Add(new OVector2<float>(width, 0));
+            
+            if (tr > 0)
+                AddArc(points, new OVector2<float>(width - tr, tr), 270, 360, tr, smoothness);
+            
+            if (br > 0)
+                points.Add(new OVector2<float>(width, height - br));
+            else
+                points.Add(new OVector2<float>(width, height));
+            
+            if (br > 0)
+                AddArc(points, new OVector2<float>(width - br, height - br), 0, 90, br, smoothness);
 
+            if (bl > 0)
+                points.Add(new OVector2<float>(bl, height));
+            else
+                points.Add(new OVector2<float>(0, height));
+            
+            if (bl > 0)
+                AddArc(points, new OVector2<float>(bl, height - bl), 90, 180, bl, smoothness);
+            
+            if (tl > 0)
+                points.Add(new OVector2<float>(0, tl));
+            
             if (rotation != 0)
             {
                 OVector2<float> center = size / 2;
@@ -252,29 +280,30 @@ public static class OkInterface
                 for (int i = 0; i < points.Count; i++)
                 {
                     OVector2<float> point = points[i];
-
                     points[i] = new OVector2<float>(
                         ((point.X - center.X) * cos - (point.Y - center.Y) * sin) + center.X,
                         ((point.X - center.X) * sin + (point.Y - center.Y) * cos) + center.Y
                     );
                 }
             }
-
+            
             for (int i = 0; i < points.Count; i++)
                 points[i] += position;
-
+            
             List<OLineInfo> lines = new List<OLineInfo>();
-
+            
             for (int i = 0; i < points.Count; i++)
             {
+                int next = (i + 1) % points.Count;
+                
                 lines.Add(new OLineInfo()
                 {
                     Start = points[i],
-                    End = points[(i + 1) % points.Count],
+                    End = points[next],
                     Color = color
                 });
             }
-
+            
             return new OShapeInfo()
             {
                 Lines = lines,
@@ -305,13 +334,17 @@ public static class OkInterface
 
             float start = startAngleDeg * MathF.PI / 180;
             float end = endAngleDeg * MathF.PI / 180;
-
-            for (int i = 0; i <= smoothness; i++)
+            int segments = smoothness;
+            
+            for (int i = 0; i <= segments; i++)
             {
-                float t = i / (float)smoothness;
+                float t = i / (float)segments;
                 float angle = start + (end - start) * t;
-
-                points.Add(new OVector2<float>(center.X + MathF.Cos(angle) * r, center.Y + MathF.Sin(angle) * r));
+                
+                points.Add(new OVector2<float>(
+                    center.X + MathF.Cos(angle) * r,
+                    center.Y + MathF.Sin(angle) * r
+                ));
             }
         }
     }
@@ -635,16 +668,18 @@ public static class OkInterface
                 return null;
 
             ORenderInfo renderInfo = new ORenderInfo();
+            IOInstance[] children = _children.ToArray();
+            IOModifier[] modifiers = _modifiers.ToArray();
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRender))
                     modifier.Process<object, object>( IOModifier.OModifierCallTime.PreRender, this);
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
                     modifier.Process<object, object>( IOModifier.OModifierCallTime.PreRenderChildren, this);
 
-            foreach (IOInstance child in _children)
+            foreach (IOInstance child in children)
             {
                 ORenderInfo? childInfo = child.Render();
 
@@ -668,19 +703,19 @@ public static class OkInterface
                         });
                     }
 
-                    childInfo.Drawings.Add(clippedDrawing);
+                    renderInfo.Drawings.Add(clippedDrawing);
                 }
 
-                foreach (IOModifier modifier in _modifiers) 
+                foreach (IOModifier modifier in modifiers) 
                     if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.RenderChildren)) 
                         modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.RenderChildren, childInfo);
             }
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))
                     renderInfo = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRenderChildren, renderInfo) ?? renderInfo;
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRender))
                     renderInfo = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRender, renderInfo) ?? renderInfo;
 
@@ -1041,6 +1076,9 @@ public static class OkInterface
             if (window is null)
                 return null;
 
+            IOInstance[] children = _children.ToArray();
+            IOModifier[] modifiers = _modifiers.ToArray();
+
             if (_parent is IOGui)
             {
                 _absoluteSize = new OVector2<float>((window.Size.X * Size.Scale.X) + Size.Offset.X, (window.Size.Y * Size.Scale.Y) + Size.Offset.Y);
@@ -1056,34 +1094,34 @@ public static class OkInterface
             }
 
             (OVector2<float>, OVector2<float>) layoutResult = RunModifierPipeline<(OVector2<float>, OVector2<float>), (OVector2<float>, OVector2<float>)>(
-                IOModifier.OModifierCallTime.Layout, (_absoluteSize, _absolutePosition)
+                modifiers, IOModifier.OModifierCallTime.Layout, (_absoluteSize, _absolutePosition)
             );
 
             if (layoutResult != default)
                 (_absoluteSize, _absolutePosition) = layoutResult;
 
             (OVector2<float>, OVector2<float>) layoutBeforeResult = RunModifierPipeline<(OVector2<float>, OVector2<float>), (OVector2<float>, OVector2<float>)>(
-                IOModifier.OModifierCallTime.LayoutBeforeChildren, (_absoluteSize, _absolutePosition)
+                modifiers, IOModifier.OModifierCallTime.LayoutBeforeChildren, (_absoluteSize, _absolutePosition)
             );
 
             if (layoutBeforeResult != default)
                 (_absoluteSize, _absolutePosition) = layoutBeforeResult;
 
             foreach (IOInstance child in _children)
-                RunModifierPipeline<IOInstance, IOInstance>(IOModifier.OModifierCallTime.LayoutChildren, child);
+                RunModifierPipeline<IOInstance, IOInstance>(modifiers, IOModifier.OModifierCallTime.LayoutChildren, child);
 
             OShapeInfo baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
             ODrawingInfo baseDrawing = ODrawingInfo.Empty;
 
             baseDrawing.Shapes.Add(baseFrame);
 
-            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(IOModifier.OModifierCallTime.PreRender, (baseDrawing, baseFrame)) ?? baseDrawing;
-            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(IOModifier.OModifierCallTime.Render, (baseDrawing, baseFrame)) ?? baseDrawing;
-            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(IOModifier.OModifierCallTime.PostRender, (baseDrawing, baseFrame)) ?? baseDrawing;
+            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(modifiers, IOModifier.OModifierCallTime.PreRender, (baseDrawing, baseFrame)) ?? baseDrawing;
+            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(modifiers, IOModifier.OModifierCallTime.Render, (baseDrawing, baseFrame)) ?? baseDrawing;
+            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(modifiers, IOModifier.OModifierCallTime.PostRender, (baseDrawing, baseFrame)) ?? baseDrawing;
 
             List<ODrawingInfo> childDrawings = new List<ODrawingInfo>();
 
-            foreach (IOInstance child in _children)
+            foreach (IOInstance child in children)
             {
                 ORenderInfo? childInfo = child.Render();
 
@@ -1094,13 +1132,13 @@ public static class OkInterface
             }
 
             for (int i = 0; i < childDrawings.Count; i++)
-                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(IOModifier.OModifierCallTime.PreRenderChildren, childDrawings[i]) ?? childDrawings[i];
+                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(modifiers, IOModifier.OModifierCallTime.PreRenderChildren, childDrawings[i]) ?? childDrawings[i];
 
             for (int i = 0; i < childDrawings.Count; i++)
-                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(IOModifier.OModifierCallTime.RenderChildren, childDrawings[i]) ?? childDrawings[i];
+                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(modifiers, IOModifier.OModifierCallTime.RenderChildren, childDrawings[i]) ?? childDrawings[i];
 
             for (int i = 0; i < childDrawings.Count; i++)
-                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(IOModifier.OModifierCallTime.PostRenderChildren, childDrawings[i]) ?? childDrawings[i];
+                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(modifiers, IOModifier.OModifierCallTime.PostRenderChildren, childDrawings[i]) ?? childDrawings[i];
 
             if (AutoSizeMode != IOInterface.OAutoSizeMode.None && childDrawings.Count > 0)
                 ApplyAutoSize(childDrawings, ref baseFrame);
@@ -1132,9 +1170,9 @@ public static class OkInterface
             return renderInfo;
         }
         
-        private TReturn? RunModifierPipeline<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
+        private TReturn? RunModifierPipeline<TReturn, TParams>(IOModifier[] modifiers, IOModifier.OModifierCallTime callTime, TParams parameters)
         {
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
             {
                 if (!modifier.Active || !modifier.CallTime.HasFlag(callTime))
                     continue;

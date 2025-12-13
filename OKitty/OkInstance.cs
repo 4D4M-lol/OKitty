@@ -314,7 +314,7 @@ public static class OkInstance
     {
         // Static Properties
 
-        public static readonly OShapeInfo Empty = new OShapeInfo() { Lines = new List<OLineInfo>() };
+        public static OShapeInfo Empty => new OShapeInfo() { Lines = new List<OLineInfo>() };
 
         // Properties
 
@@ -347,7 +347,7 @@ public static class OkInstance
     {
         // Static Properties
 
-        public static readonly ODrawingInfo Empty = new ODrawingInfo() { Shapes = new List<OShapeInfo>() };
+        public static ODrawingInfo Empty => new ODrawingInfo() { Shapes = new List<OShapeInfo>() };
 
         // Properties
 
@@ -357,7 +357,7 @@ public static class OkInstance
 
         public override string ToString()
         {
-            return "[GeometryInfo]";
+            return "[DrawingInfo]";
         }
     }
 
@@ -381,7 +381,7 @@ public static class OkInstance
     {
         // Static Properties
 
-        public static readonly OFaceInfo Empty = new OFaceInfo() { Edges = new List<OEdgeInfo>() };
+        public static OFaceInfo Empty => new OFaceInfo() { Edges = new List<OEdgeInfo>() };
 
         // Properties and Fields
 
@@ -400,7 +400,7 @@ public static class OkInstance
     {
         // Static Properties
 
-        public static readonly OGeometryInfo Empty = new OGeometryInfo() { Faces = new List<OFaceInfo>() };
+        public static OGeometryInfo Empty => new OGeometryInfo() { Faces = new List<OFaceInfo>() };
 
         // Properties and Fields
 
@@ -684,7 +684,9 @@ public static class OkInstance
 
         public ORenderInfo? Render()
         {
-            foreach (IOModifier modifier in _modifiers)
+            IOModifier[] modifiers = _modifiers.ToArray();
+            
+            foreach (IOModifier modifier in modifiers)
             {
                 if (!modifier.Active)
                     continue;
@@ -1021,15 +1023,16 @@ public static class OkInstance
     
         public ORenderInfo? Render()
         {
+            IOModifier[] modifiers = _modifiers.ToArray();
             ORenderInfo? info = null;
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRender))
                     modifier.Process<object, ORenderInfo?>(IOModifier.OModifierCallTime.PreRender, info);
 
             info = _scenes[_active].Render();
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRender))
                     info = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRender, info);
 
@@ -1381,18 +1384,21 @@ public static class OkInstance
 
             if (scenes.Active != scenes.GetScenes().IndexOf(this))
                 return null;
+            
+            IOInstance[] children = _children.ToArray();
+            IOModifier[] modifiers = _modifiers.ToArray();
 
-            ORenderInfo result = new ORenderInfo();
+            ORenderInfo? result = new ORenderInfo();
             List<OGeometryInfo> sceneGeometries = new();
             List<(OGeometryInfo geometry, int layer)> uiGeometries = new List<(OGeometryInfo geometry, int layer)>();
             List<ODrawingInfo> sceneDrawings = new();
             List<(ODrawingInfo drawing, int layer)> uiDrawings = new List<(ODrawingInfo drawing, int layer)>();
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
                     modifier.Process<object, object>(IOModifier.OModifierCallTime.PreRenderChildren, this);
 
-            foreach (IOInstance child in _children)
+            foreach (IOInstance child in children)
             {
                 ORenderInfo? info = child.Render();
 
@@ -1422,7 +1428,7 @@ public static class OkInstance
                         uiDrawings.Add((shape, layer));
                 }
 
-                foreach (IOModifier modifier in _modifiers)
+                foreach (IOModifier modifier in modifiers)
                     if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.RenderChildren))
                         modifier.Process<object, ORenderInfo?>(IOModifier.OModifierCallTime.RenderChildren, info);
             }
@@ -1435,7 +1441,7 @@ public static class OkInstance
             result.Drawings.AddRange(sceneDrawings);
             result.Drawings.AddRange(uiDrawings.Select(((ODrawingInfo drawing, int _) item) => item.drawing));
 
-            foreach (IOModifier modifier in _modifiers)
+            foreach (IOModifier modifier in modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))
                     result = modifier.Process<ORenderInfo?, ORenderInfo?>(IOModifier.OModifierCallTime.PostRenderChildren, result);
             
