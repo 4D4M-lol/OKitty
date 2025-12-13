@@ -312,6 +312,14 @@ public static class OkInstance
 
     public record OShapeInfo
     {
+        // Enums
+        
+        public enum OMaskType
+        {
+            Clip,
+            Negate
+        }
+        
         // Static Properties
 
         public static OShapeInfo Empty => new OShapeInfo() { Lines = new List<OLineInfo>() };
@@ -320,6 +328,7 @@ public static class OkInstance
 
         public required List<OLineInfo> Lines { get; init; }
         public OShapeInfo? Mask { get; init; } = null;
+        public OMaskType MaskType { get; init; } = OMaskType.Clip;
         public OColor Color { get; init; } = OColor.Black;
         public int Layer { get; init; } = 0;
 
@@ -333,6 +342,128 @@ public static class OkInstance
                 points.AddRange(line.Start, line.End);
 
             return new ReadOnlyCollection<OVector2<float>>(points.Distinct().ToList());
+        }
+        
+        public static OShapeInfo Clip(OShapeInfo info)
+        {
+            if (info.Mask == null || info.MaskType != OMaskType.Clip)
+                return info;
+
+            List<OVector2<float>> vertices = EnsureCcw(GetPolygonFromLines(info.Lines));
+            List<OVector2<float>> clipPolygon = EnsureCcw(GetPolygonFromLines(info.Mask.Lines));
+
+            if (vertices.Count < 3 || clipPolygon.Count < 3)
+                return info;
+
+            List<OVector2<float>> clipped = new List<OVector2<float>>(vertices);
+
+            for (int i = 0; i < clipPolygon.Count; i++)
+            {
+                int j = (i + 1) % clipPolygon.Count;
+                OVector2<float> clipStart = clipPolygon[i];
+                OVector2<float> clipEnd = clipPolygon[j];
+                float nx = clipStart.Y - clipEnd.Y;
+                float ny = clipEnd.X - clipStart.X;
+                List<OVector2<float>> input = clipped;
+
+                clipped = new List<OVector2<float>>();
+
+                if (input.Count == 0)
+                    break;
+
+                OVector2<float> prev = input[^1];
+                float prevDot = (prev.X - clipStart.X) * nx + (prev.Y - clipStart.Y) * ny;
+
+                foreach (OVector2<float> curr in input)
+                {
+                    float currDot = (curr.X - clipStart.X) * nx +(curr.Y - clipStart.Y) * ny;
+
+                    if (currDot >= 0 && prevDot >= 0)
+                        clipped.Add(curr);
+                    else if (prevDot >= 0 && currDot < 0)
+                    {
+                        float t = prevDot / (prevDot - currDot);
+
+                        clipped.Add(Intersect(prev, curr, t));
+                    }
+                    else if (prevDot < 0 && currDot >= 0)
+                    {
+                        float t = prevDot / (prevDot - currDot);
+                        
+                        clipped.Add(Intersect(prev, curr, t));
+                        clipped.Add(curr);
+                    }
+
+                    prev = curr;
+                    prevDot = currDot;
+                }
+            }
+
+            if (clipped.Count < 3)
+                return new OShapeInfo() { Lines = new List<OLineInfo>() };
+
+            List<OLineInfo> newLines = new List<OLineInfo>();
+
+            for (int i = 0; i < clipped.Count; i++)
+            {
+                OVector2<float> a = clipped[i];
+                OVector2<float> b = clipped[(i + 1) % clipped.Count];
+
+                newLines.Add(
+                    new OLineInfo()
+                    {
+                        Start = a,
+                        End = b,
+                        Color = info.Color
+                    }
+                );
+            }
+
+            return new OShapeInfo()
+            {
+                Lines = newLines,
+                Color = info.Color,
+                Layer = info.Layer
+            };
+        }
+
+        private static OVector2<float> Intersect(OVector2<float> a, OVector2<float> b, float t)
+        {
+            return new OVector2<float>(
+                a.X + t * (b.X - a.X),
+                a.Y + t * (b.Y - a.Y)
+            );
+        }
+    
+        private static List<OVector2<float>> GetPolygonFromLines(List<OLineInfo> lines)
+        {
+            HashSet<OVector2<float>> set = new HashSet<OVector2<float>>();
+
+            foreach (OLineInfo line in lines)
+            {
+                set.Add(line.Start);
+                set.Add(line.End);
+            }
+
+            return set.ToList();
+        }
+
+        private static List<OVector2<float>> EnsureCcw(List<OVector2<float>> poly)
+        {
+            float sum = 0;
+
+            for (int i = 0; i < poly.Count; i++)
+            {
+                OVector2<float> a = poly[i];
+                OVector2<float> b = poly[(i + 1) % poly.Count];
+
+                sum += (b.X - a.X) * (b.Y + a.Y);
+            }
+
+            if (sum > 0)
+                poly.Reverse();
+
+            return poly;
         }
 
         // To String

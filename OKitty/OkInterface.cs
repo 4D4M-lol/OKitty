@@ -692,7 +692,7 @@ public static class OkInterface
 
                     foreach (OShapeInfo shapeInfo in drawingInfo.Shapes)
                     {
-                        OShapeInfo clipped = window.Renderer.ApplyMask(shapeInfo);
+                        OShapeInfo clipped = OShapeInfo.Clip(shapeInfo);
 
                         clippedDrawing.Shapes.Add(new OShapeInfo()
                         {
@@ -1153,7 +1153,7 @@ public static class OkInterface
 
                 foreach (OShapeInfo shape in drawing.Shapes)
                 {
-                    OShapeInfo clipped = window.Renderer.ApplyMask(shape);
+                    OShapeInfo clipped = OShapeInfo.Clip(shape);
 
                     clippedDrawing.Shapes.Add(new OShapeInfo()
                     {
