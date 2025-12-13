@@ -339,7 +339,25 @@ public static class OkInstance
 
         public override string ToString()
         {
-            return $"[ShapeInfo]";
+            return "[ShapeInfo]";
+        }
+    }
+
+    public record ODrawingInfo
+    {
+        // Static Properties
+
+        public static readonly ODrawingInfo Empty = new ODrawingInfo() { Shapes = new List<OShapeInfo>() };
+
+        // Properties
+
+        public required List<OShapeInfo> Shapes { get; init; }
+
+        // To String
+
+        public override string ToString()
+        {
+            return "[GeometryInfo]";
         }
     }
 
@@ -361,10 +379,13 @@ public static class OkInstance
 
     public record OFaceInfo
     {
+        // Static Properties
+
+        public static readonly OFaceInfo Empty = new OFaceInfo() { Edges = new List<OEdgeInfo>() };
+
         // Properties and Fields
 
         public required List<OEdgeInfo> Edges { get; init; }
-        public List<OTextureInfo>? Textures { get; init; } = null;
         public OColor Color { get; init; } = OColor.Black;
 
         // To String
@@ -375,13 +396,12 @@ public static class OkInstance
         }
     }
 
-    public record OTextureInfo
-    {
-        // TODO!: Create texture.
-    }
-
     public record OGeometryInfo
     {
+        // Static Properties
+
+        public static readonly OGeometryInfo Empty = new OGeometryInfo() { Faces = new List<OFaceInfo>() };
+
         // Properties and Fields
 
         public required List<OFaceInfo> Faces { get; init; }
@@ -400,14 +420,14 @@ public static class OkInstance
     {
         // Properties and Fields
 
-        public List<OShapeInfo> Shapes { get; private set; }
+        public List<ODrawingInfo> Drawings { get; private set; }
         public List<OGeometryInfo> Geometries { get; private set; }
 
         // Methods and Functions
 
-        public ORenderInfo(List<OShapeInfo>? shapes = null, List<OGeometryInfo>? geometries = null)
+        public ORenderInfo(List<ODrawingInfo>? drawings = null, List<OGeometryInfo>? geometries = null)
         {
-            Shapes = shapes ?? new List<OShapeInfo>();
+            Drawings = drawings ?? new List<ODrawingInfo>();
             Geometries = geometries ?? new List<OGeometryInfo>();
         }
 
@@ -1364,9 +1384,9 @@ public static class OkInstance
 
             ORenderInfo result = new ORenderInfo();
             List<OGeometryInfo> sceneGeometries = new();
-            List<(OGeometryInfo geometry, int layer)> uiGeometries = new();
-            List<OShapeInfo> sceneShapes = new();
-            List<(OShapeInfo shape, int layer)> uiShapes = new();
+            List<(OGeometryInfo geometry, int layer)> uiGeometries = new List<(OGeometryInfo geometry, int layer)>();
+            List<ODrawingInfo> sceneDrawings = new();
+            List<(ODrawingInfo drawing, int layer)> uiDrawings = new List<(ODrawingInfo drawing, int layer)>();
 
             foreach (IOModifier modifier in _modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PreRenderChildren))
@@ -1384,7 +1404,7 @@ public static class OkInstance
                 if (!isInterface)
                 {
                     sceneGeometries.AddRange(info.Geometries);
-                    sceneShapes.AddRange(info.Shapes);
+                    sceneDrawings.AddRange(info.Drawings);
                 }
                 else
                 {
@@ -1398,8 +1418,8 @@ public static class OkInstance
                     foreach (OGeometryInfo geometry in info.Geometries)
                         uiGeometries.Add((geometry, layer));
 
-                    foreach (OShapeInfo shape in info.Shapes)
-                        uiShapes.Add((shape, layer));
+                    foreach (ODrawingInfo shape in info.Drawings)
+                        uiDrawings.Add((shape, layer));
                 }
 
                 foreach (IOModifier modifier in _modifiers)
@@ -1407,13 +1427,13 @@ public static class OkInstance
                         modifier.Process<object, ORenderInfo?>(IOModifier.OModifierCallTime.RenderChildren, info);
             }
 
-            uiGeometries = uiGeometries.OrderBy(e => e.layer).ToList();
-            uiShapes = uiShapes.OrderBy(e => e.layer).ToList();
+            uiGeometries = uiGeometries.OrderBy(((OGeometryInfo _, int layer) item) => item.layer).ToList();
+            uiDrawings = uiDrawings.OrderBy(((ODrawingInfo _, int layer) item) => item.layer).ToList();
 
             result.Geometries.AddRange(sceneGeometries);
-            result.Geometries.AddRange(uiGeometries.Select(e => e.geometry));
-            result.Shapes.AddRange(sceneShapes);
-            result.Shapes.AddRange(uiShapes.Select(e => e.shape));
+            result.Geometries.AddRange(uiGeometries.Select(((OGeometryInfo geometry, int _) item) => item.geometry));
+            result.Drawings.AddRange(sceneDrawings);
+            result.Drawings.AddRange(uiDrawings.Select(((ODrawingInfo drawing, int _) item) => item.drawing));
 
             foreach (IOModifier modifier in _modifiers)
                 if (modifier.Active && modifier.CallTime.HasFlag(IOModifier.OModifierCallTime.PostRenderChildren))

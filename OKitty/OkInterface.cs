@@ -4,7 +4,6 @@ using static OKitty.OkInstance;
 using static OKitty.OkMath;
 using static OKitty.OkScript;
 using static OKitty.OkStyling;
-using System.Reflection;
 using System.Collections.ObjectModel;
 
 namespace OKitty;
@@ -29,13 +28,6 @@ public static class OkInterface
             ShrinkVertically,
             ShrinkBoth
         }
-
-        // Static Properties
-
-        public static readonly Type PreRenderModifierDelegate = typeof(Func<,,,>)
-            .MakeGenericType(typeof(OWindow), typeof(OVector2<float>), typeof(OVector2<float>), typeof(ValueTuple<OVector2<float>, OVector2<float>>));
-        public static readonly Type RenderModifierDelegate = typeof(Func<,>)
-            .MakeGenericType(typeof(OShapeInfo), typeof(OShapeInfo));
 
         // Properties
 
@@ -659,17 +651,24 @@ public static class OkInterface
                 if (childInfo is null)
                     continue;
 
-                foreach (OShapeInfo shapeInfo in childInfo.Shapes)
+                foreach (ODrawingInfo drawingInfo in childInfo.Drawings)
                 {
-                    OShapeInfo clipped = window.Renderer.ApplyMask(shapeInfo);
+                    ODrawingInfo clippedDrawing = ODrawingInfo.Empty;
 
-                    renderInfo.Shapes.Add(new OShapeInfo()
+                    foreach (OShapeInfo shapeInfo in drawingInfo.Shapes)
                     {
-                        Lines = clipped.Lines,
-                        Color = clipped.Color,
-                        Mask = Clip ? window.SafeArea : null,
-                        Layer = clipped.Layer
-                    });
+                        OShapeInfo clipped = window.Renderer.ApplyMask(shapeInfo);
+
+                        clippedDrawing.Shapes.Add(new OShapeInfo()
+                        {
+                            Lines = clipped.Lines,
+                            Color = clipped.Color,
+                            Mask = Clip ? window.SafeArea : null,
+                            Layer = clipped.Layer
+                        });
+                    }
+
+                    childInfo.Drawings.Add(clippedDrawing);
                 }
 
                 foreach (IOModifier modifier in _modifiers) 
@@ -1044,13 +1043,13 @@ public static class OkInterface
 
             if (_parent is IOGui)
             {
-                _absoluteSize = new((window.Size.X * Size.Scale.X) + Size.Offset.X, (window.Size.Y * Size.Scale.Y) + Size.Offset.Y);
-                _absolutePosition = new((window.Size.X * Position.Scale.X) + Position.Offset.X, (window.Size.Y * Position.Scale.Y) + Position.Offset.Y);
+                _absoluteSize = new OVector2<float>((window.Size.X * Size.Scale.X) + Size.Offset.X, (window.Size.Y * Size.Scale.Y) + Size.Offset.Y);
+                _absolutePosition = new OVector2<float>((window.Size.X * Position.Scale.X) + Position.Offset.X, (window.Size.Y * Position.Scale.Y) + Position.Offset.Y);
             }
             else if (_parent is IOInterface parentInterface)
             {
-                _absoluteSize = new((parentInterface.AbsoluteSize.X * Size.Scale.X) + Size.Offset.X, (parentInterface.AbsoluteSize.Y * Size.Scale.Y) + Size.Offset.Y);
-                _absolutePosition = new(
+                _absoluteSize = new OVector2<float>((parentInterface.AbsoluteSize.X * Size.Scale.X) + Size.Offset.X, (parentInterface.AbsoluteSize.Y * Size.Scale.Y) + Size.Offset.Y);
+                _absolutePosition = new OVector2<float>(
                     (parentInterface.AbsoluteSize.X * Position.Scale.X) + Position.Offset.X + parentInterface.AbsolutePosition.X,
                     (parentInterface.AbsoluteSize.Y * Position.Scale.Y) + Position.Offset.Y + parentInterface.AbsolutePosition.Y
                 );
@@ -1074,12 +1073,15 @@ public static class OkInterface
                 RunModifierPipeline<IOInstance, IOInstance>(IOModifier.OModifierCallTime.LayoutChildren, child);
 
             OShapeInfo baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
+            ODrawingInfo baseDrawing = ODrawingInfo.Empty;
 
-            baseFrame = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PreRender, baseFrame) ?? baseFrame;
-            baseFrame = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.Render, baseFrame) ?? baseFrame;
-            baseFrame = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PostRender, baseFrame) ?? baseFrame;
+            baseDrawing.Shapes.Add(baseFrame);
 
-            List<OShapeInfo> childShapes = new();
+            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(IOModifier.OModifierCallTime.PreRender, (baseDrawing, baseFrame)) ?? baseDrawing;
+            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(IOModifier.OModifierCallTime.Render, (baseDrawing, baseFrame)) ?? baseDrawing;
+            baseDrawing = RunModifierPipeline<ODrawingInfo, (ODrawingInfo, OShapeInfo)>(IOModifier.OModifierCallTime.PostRender, (baseDrawing, baseFrame)) ?? baseDrawing;
+
+            List<ODrawingInfo> childDrawings = new List<ODrawingInfo>();
 
             foreach (IOInstance child in _children)
             {
@@ -1088,53 +1090,59 @@ public static class OkInterface
                 if (childInfo == null)
                     continue;
 
-                foreach (OShapeInfo shape in childInfo.Shapes)
-                    childShapes.Add(shape);
+                childDrawings.AddRange(childInfo.Drawings);
             }
 
-            for (int i = 0; i < childShapes.Count; i++)
-                childShapes[i] = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PreRenderChildren, childShapes[i]) ?? childShapes[i];
+            for (int i = 0; i < childDrawings.Count; i++)
+                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(IOModifier.OModifierCallTime.PreRenderChildren, childDrawings[i]) ?? childDrawings[i];
 
-            for (int i = 0; i < childShapes.Count; i++)
-                childShapes[i] = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.RenderChildren, childShapes[i]) ?? childShapes[i];
+            for (int i = 0; i < childDrawings.Count; i++)
+                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(IOModifier.OModifierCallTime.RenderChildren, childDrawings[i]) ?? childDrawings[i];
 
-            for (int i = 0; i < childShapes.Count; i++)
-                childShapes[i] = RunModifierPipeline<OShapeInfo, OShapeInfo>(IOModifier.OModifierCallTime.PostRenderChildren, childShapes[i]) ?? childShapes[i];
+            for (int i = 0; i < childDrawings.Count; i++)
+                childDrawings[i] = RunModifierPipeline<ODrawingInfo, ODrawingInfo>(IOModifier.OModifierCallTime.PostRenderChildren, childDrawings[i]) ?? childDrawings[i];
 
-            if (AutoSizeMode != IOInterface.OAutoSizeMode.None && childShapes.Count > 0)
-                ApplyAutoSize(childShapes, ref baseFrame);
+            if (AutoSizeMode != IOInterface.OAutoSizeMode.None && childDrawings.Count > 0)
+                ApplyAutoSize(childDrawings, ref baseFrame);
 
-            ORenderInfo renderInfo = new();
+            ORenderInfo renderInfo = new ORenderInfo();
 
-            renderInfo.Shapes.Add(baseFrame);
+            renderInfo.Drawings.Add(baseDrawing);
 
-            foreach (OShapeInfo shape in childShapes)
+            foreach (ODrawingInfo drawing in childDrawings)
             {
-                OShapeInfo clipped = window.Renderer.ApplyMask(shape);
+                ODrawingInfo clippedDrawing = ODrawingInfo.Empty;
 
-                renderInfo.Shapes.Add(new OShapeInfo()
+                foreach (OShapeInfo shape in drawing.Shapes)
                 {
-                    Lines = clipped.Lines,
-                    Color = clipped.Color,
-                    Mask = Clip ? baseFrame : null,
-                    Layer = clipped.Layer + Layer
-                });
+                    OShapeInfo clipped = window.Renderer.ApplyMask(shape);
+
+                    clippedDrawing.Shapes.Add(new OShapeInfo()
+                    {
+                        Lines = clipped.Lines,
+                        Color = clipped.Color,
+                        Mask = Clip ? baseFrame : null,
+                        Layer = clipped.Layer + Layer
+                    });
+                }
+
+                renderInfo.Drawings.Add(clippedDrawing);
             }
 
             return renderInfo;
         }
         
-        private T? RunModifierPipeline<T, TParams>(IOModifier.OModifierCallTime stage, TParams parameters)
+        private TReturn? RunModifierPipeline<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
         {
             foreach (IOModifier modifier in _modifiers)
             {
-                if (!modifier.Active || !modifier.CallTime.HasFlag(stage))
+                if (!modifier.Active || !modifier.CallTime.HasFlag(callTime))
                     continue;
 
-                if (!modifier.CanProcess<T, TParams>())
+                if (!modifier.CanProcess<TReturn, TParams>())
                     continue;
 
-                T? result = modifier.Process<T, TParams>(stage, parameters);
+                TReturn? result = modifier.Process<TReturn, TParams>(callTime, parameters);
 
                 if (result is not null)
                     return result;
@@ -1143,12 +1151,12 @@ public static class OkInterface
             return default;
         }
 
-        private void ApplyAutoSize(List<OShapeInfo> childShapes, ref OShapeInfo baseFrame)
+        private void ApplyAutoSize(List<ODrawingInfo> childDrawings, ref OShapeInfo baseFrame)
         {
-            if (AutoSizeMode == IOInterface.OAutoSizeMode.None || childShapes.Count == 0)
+            if (AutoSizeMode == IOInterface.OAutoSizeMode.None || childDrawings.Count == 0)
                 return;
 
-            GetBoundingBox(childShapes, out float minX, out float minY, out float maxX, out float maxY);
+            GetBoundingBox(childDrawings, out float minX, out float minY, out float maxX, out float maxY);
 
             float childWidth = maxX - minX;
             float childHeight = maxY - minY;
@@ -1192,42 +1200,43 @@ public static class OkInterface
             baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
         }
 
-        private static void GetBoundingBox(List<OShapeInfo> shapes, out float minX, out float minY, out float maxX, out float maxY)
+        private static void GetBoundingBox(List<ODrawingInfo> drawings, out float minX, out float minY, out float maxX, out float maxY)
         {
             minX = float.MaxValue;
             minY = float.MaxValue;
             maxX = float.MinValue;
             maxY = float.MinValue;
 
-            foreach (OShapeInfo shape in shapes)
-            {
-                foreach (OLineInfo line in shape.Lines)
+            foreach (ODrawingInfo drawing in drawings)
+                foreach (OShapeInfo shape in drawing.Shapes)
                 {
-                    if (line.Start.X < minX)
-                        minX = line.Start.X;
+                    foreach (OLineInfo line in shape.Lines)
+                    {
+                        if (line.Start.X < minX)
+                            minX = line.Start.X;
 
-                    if (line.Start.Y < minY)
-                        minY = line.Start.Y;
+                        if (line.Start.Y < minY)
+                            minY = line.Start.Y;
 
-                    if (line.Start.X > maxX)
-                        maxX = line.Start.X;
+                        if (line.Start.X > maxX)
+                            maxX = line.Start.X;
 
-                    if (line.Start.Y > maxY)
-                        maxY = line.Start.Y;
+                        if (line.Start.Y > maxY)
+                            maxY = line.Start.Y;
 
-                    if (line.End.X < minX)
-                        minX = line.End.X;
+                        if (line.End.X < minX)
+                            minX = line.End.X;
 
-                    if (line.End.Y < minY)
-                        minY = line.End.Y;
+                        if (line.End.Y < minY)
+                            minY = line.End.Y;
 
-                    if (line.End.X > maxX)
-                        maxX = line.End.X;
+                        if (line.End.X > maxX)
+                            maxX = line.End.X;
 
-                    if (line.End.Y > maxY)
-                        maxY = line.End.Y;
+                        if (line.End.Y > maxY)
+                            maxY = line.End.Y;
+                    }
                 }
-            }
         }
 
         // To String

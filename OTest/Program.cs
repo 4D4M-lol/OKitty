@@ -55,7 +55,7 @@ class Program
                 default:
                     // Unknown argument, fall back to default example.
                     
-                    Basics.Window.Start();
+                    Interfaces.Test.Start();
                     
                     break;
             }

@@ -438,6 +438,27 @@ public interface IORenderer
             RenderShape(shape);
     }
 
+    public void RenderDrawing(ODrawingInfo drawing)
+    {
+        if (Window is null)
+        {
+            ODebugger.Warn("Renderer must be parented to a window to render something.");
+
+            return;
+        }
+
+        List<OShapeInfo> sortedShapes = drawing.Shapes.OrderBy((OShapeInfo shape) => shape.Layer).ToList();
+
+        RenderShapes(sortedShapes);
+        
+    }
+
+    public void RenderDrawings(ICollection<ODrawingInfo> drawings)
+    {
+        foreach (ODrawingInfo drawing in drawings)
+            RenderDrawing(drawing);
+    }
+
     public void Present()
     {
         if (Window is null)
@@ -1283,7 +1304,7 @@ public class OWindow : IOPrototype
 
     // Static Properties
 
-    public static ReadOnlyCollection<OInfos.OPlatform> SupportedPlatform { get; } = new(new List<OInfos.OPlatform>()
+    public static ReadOnlyCollection<OInfos.OPlatform> SupportedPlatform { get; } = new ReadOnlyCollection<OInfos.OPlatform>(new List<OInfos.OPlatform>()
     {
         OInfos.OPlatform.AtariMiNt, OInfos.OPlatform.FreeBsd, OInfos.OPlatform.Haiku, OInfos.OPlatform.Linux, OInfos.OPlatform.MacOs,
         OInfos.OPlatform.NetBsd, OInfos.OPlatform.OpenBsd, OInfos.OPlatform.Os2, OInfos.OPlatform.QnxNeutrino,
@@ -1965,7 +1986,7 @@ public class OWindow : IOPrototype
         ORenderInfo? renderInfo = _scenes.Render();
 
         if (renderInfo is not null)
-            _renderer.RenderShapes(renderInfo.Shapes);
+            _renderer.RenderDrawings(renderInfo.Drawings);
 
         RunModifierPipeline<object, object>(IOModifier.OModifierCallTime.PostRender, new object());
 
@@ -1982,28 +2003,33 @@ public class OWindow : IOPrototype
         return null;
     }
 
-    private TReturn RunModifierPipeline<TReturn, TParams>(IOModifier.OModifierCallTime phase, TParams parameters)
+    private TReturn RunModifierPipeline<TReturn, TParams>(IOModifier.OModifierCallTime callTime, TParams parameters)
     {
-        object current = parameters!;
+        object? current = parameters;
 
         foreach (IOModifier modifier in _modifiers)
         {
-            if (!modifier.Active)
-                continue;
-
-            if (!modifier.CallTime.HasFlag(phase))
+            if (!modifier.Active || !modifier.CallTime.HasFlag(callTime))
                 continue;
 
             if (!modifier.CanProcess<TReturn, TParams>())
                 continue;
 
-            TReturn? result = modifier.Process<TReturn, TParams>(phase, (TParams)current);
+            TReturn? result = modifier.Process<TReturn, TParams>(callTime, (TParams)current!);
 
-            if (result != null)
-                current = result;
+            if (result is not null)
+            {
+                if (typeof(TReturn) == typeof(TParams) && result is TParams converted)
+                    current = converted;
+                else
+                    current = result;
+            }
         }
 
-        return (TReturn)current;
+        if (current is TReturn returnValue)
+            return returnValue;
+
+        throw new InvalidCastException($"Cannot convert {current?.GetType().Name ?? "null"} to {typeof(TReturn).Name}");
     }
 
     private bool Filter(IntPtr _, ref SDL.Event ev)
@@ -2035,11 +2061,14 @@ public class OWindow : IOPrototype
             case (uint)SDL.EventType.WindowPixelSizeChanged:
                 Render();
                 SDL.GetWindowSize(_sdlWindow, out int width, out int height);
+                SDL.GetWindowSafeArea(_sdlWindow, out SDL.Rect safeArea);
 
                 if (width == _size.X && height == _size.Y)
                     break;
                 
                 _size = new OVector2<int>(width, height);
+
+                SafeArea = OShapes.Rectangle(new OVector2<float>(safeArea.W, safeArea.H), new OVector2<float>(safeArea.X, safeArea.Y), 0, 0, OColor.Black);
 
                 OnResize?.Invoke(_size);
 
@@ -2047,11 +2076,14 @@ public class OWindow : IOPrototype
             case (uint)SDL.EventType.WindowMoved:
                 Render();
                 SDL.GetWindowPosition(_sdlWindow, out int x, out int y);
+                SDL.GetWindowSafeArea(_sdlWindow, out safeArea);
 
                 if (x == _position.X && y == _position.Y)
                     break;
 
                 _position = new OVector2<int>(x, y);
+
+                SafeArea = OShapes.Rectangle(new OVector2<float>(safeArea.W, safeArea.H), new OVector2<float>(safeArea.X, safeArea.Y), 0, 0, OColor.Black);
 
                 OnMove?.Invoke(_position);
 
@@ -2076,11 +2108,19 @@ public class OWindow : IOPrototype
             flags |= SDL.WindowFlags.OpenGL;
         
         _renderer.ApplyConfig();
-        SDL.CreateWindowAndRenderer(_name, _size.X, _size.Y, flags, out _sdlWindow, out _sdlRenderer);
+
+        if (!SDL.CreateWindowAndRenderer(_name, _size.X, _size.Y, flags, out _sdlWindow, out _sdlRenderer))
+        {
+            ODebugger.Throw(new ExternalException($"Failed to create SDL window and/or renderer: {SDL.GetError()}.\n"));
+            SDL.QuitSubSystem(SDL.InitFlags.Video);
+            
+            return;
+        }
         
         if (_sdlWindow == IntPtr.Zero || _sdlRenderer == IntPtr.Zero)
         {
             ODebugger.Throw(new ExternalException($"Failed to create SDL window and/or renderer: {SDL.GetError()}.\n"));
+            SDL.QuitSubSystem(SDL.InitFlags.Video);
             
             return;
         }
@@ -2088,6 +2128,7 @@ public class OWindow : IOPrototype
         if (!SDL.AddEventWatch(_filter, IntPtr.Zero))
         {
             ODebugger.Throw(new ExternalException($"Failed to add SDL event watch: {SDL.GetError()}.\n"));
+            SDL.QuitSubSystem(SDL.InitFlags.Video);
             
             return;
         }
@@ -2144,6 +2185,7 @@ public class OWindow : IOPrototype
         SDL.GetWindowSafeArea(_sdlWindow, out SDL.Rect safeArea);
 
         _lastTickTime = Ticks;
+
         SafeArea = OShapes.Rectangle(new OVector2<float>(safeArea.W, safeArea.H), new OVector2<float>(safeArea.X, safeArea.Y), 0, 0, OColor.Black);
         Initialized = true;
         
