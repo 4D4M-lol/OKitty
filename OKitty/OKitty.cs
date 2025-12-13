@@ -1810,20 +1810,18 @@ public class OWindow : IOPrototype
                 ulong currentTime = SDL.GetTicks();
                 ulong deltaTime = currentTime - lastFrameTime;
                 
-                // Only render if enough time has passed (cap at 60 FPS)
-                if (deltaTime >= (ulong)Delay)  // Delay is in milliseconds (16ms ≈ 60 FPS)
+                if (deltaTime >= (ulong)Delay)
                 {
                     Render();
+                    
                     lastFrameTime = currentTime;
                 }
                 
-                // Process events without blocking
-                while (SDL.PollEvent(out SDL.Event ev))
+                while (SDL.PollEvent(out SDL.Event _))
                 {
-                    // Process events here if needed
+                    
                 }
                 
-                // Small sleep to prevent 100% CPU usage
                 SDL.Delay(1);
             }
         }, IntPtr.Zero, true);
