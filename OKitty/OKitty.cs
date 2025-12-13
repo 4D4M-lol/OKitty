@@ -1831,7 +1831,7 @@ public class OWindow : IOPrototype
     {
         if (!Initialized)
         {
-            ODebugger.Warn("Window must be initalized first befor being stopped.\n");
+            ODebugger.Warn("Window must be initialized first before being stopped.\n");
 
             return;
         }
