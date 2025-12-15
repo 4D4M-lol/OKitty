@@ -82,7 +82,7 @@ public static class OkInterface
 
         // Method and Functions
 
-        public static OShapeInfo Triangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, OTriangleType type, OColor color, OShapeInfo? mask = null)
+        public static OShapeInfo Triangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, OTriangleType type, OColor color, OShapeInfo? mask = null, OShapeInfo? negative = null)
         {
             (OVector2<float> p1, OVector2<float> p2, OVector2<float> p3) = (new OVector2<float>(), new OVector2<float>(), new OVector2<float>());
 
@@ -162,6 +162,7 @@ public static class OkInterface
             {
                 Lines = lines,
                 Mask = mask,
+                Negative = negative,
                 Color = color,
                 Layer = layer
             };
@@ -169,7 +170,7 @@ public static class OkInterface
             return shape;
         }
 
-        public static OShapeInfo Rectangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, OColor color, OShapeInfo? mask = null)
+        public static OShapeInfo Rectangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, OColor color, OShapeInfo? mask = null, OShapeInfo? negative = null)
         {
             (OVector2<float> p1, OVector2<float> p2, OVector2<float> p3, OVector2<float> p4) = (
                 new OVector2<float>(), new OVector2<float>(size.X, 0), new OVector2<float>(size.X, size.Y),
@@ -217,6 +218,7 @@ public static class OkInterface
             {
                 Lines = lines,
                 Mask = mask,
+                Negative = negative,
                 Color = color,
                 Layer = layer
             };
@@ -226,7 +228,7 @@ public static class OkInterface
         
         public static OShapeInfo RoundedRectangle(
             OVector2<float> size, OVector2<float> position, float rotation, int layer,  (float topLeft, float topRight, float bottomRight, float bottomLeft) radius, OColor color,
-            int smoothness = 24, OShapeInfo? mask = null
+            int smoothness = 24, OShapeInfo? mask = null, OShapeInfo? negative = null
         )
         {
             float width = size.X;
@@ -308,23 +310,24 @@ public static class OkInterface
             {
                 Lines = lines,
                 Mask = mask,
+                Negative = negative,
                 Color = color,
                 Layer = layer
             };
         }
 
-        public static OShapeInfo RoundedRectangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, float radius, OColor color, int smoothness = 24, OShapeInfo? mask = null)
+        public static OShapeInfo RoundedRectangle(OVector2<float> size, OVector2<float> position, float rotation, int layer, float radius, OColor color, int smoothness = 24, OShapeInfo? mask = null, OShapeInfo? negative = null)
         {
-            return RoundedRectangle(size, position, rotation, layer, (radius, radius, radius, radius), color, smoothness, mask);
+            return RoundedRectangle(size, position, rotation, layer, (radius, radius, radius, radius), color, smoothness, mask, negative);
         }
 
-        public static OShapeInfo Circle(float radius, OVector2<float> position, int layer, OColor color, int smoothness = 24, OShapeInfo? mask = null)
+        public static OShapeInfo Circle(float radius, OVector2<float> position, int layer, OColor color, int smoothness = 24, OShapeInfo? mask = null, OShapeInfo? negative = null)
         {
             float diameter = radius * 2;
             OVector2<float> size = new OVector2<float>(diameter, diameter);
             OVector2<float> center = new OVector2<float>(position.X - radius, position.Y - radius);
 
-            return RoundedRectangle(size, center, 0, layer, radius, color, smoothness, mask);
+            return RoundedRectangle(size, center, 0, layer, radius, color, smoothness, mask, negative);
         }
 
         private static void AddArc(List<OVector2<float>> points, OVector2<float> center, float startAngleDeg, float endAngleDeg, float r, int smoothness)

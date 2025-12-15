@@ -336,20 +336,17 @@ public interface IORenderer
             return;
         }
 
-        OShapeInfo finalShape = shape.Mask is not null && shape.MaskType == OShapeInfo.OMaskType.Clip ? OShapeInfo.Clip(shape) : shape;
+        OShapeInfo finalShape = shape.Mask is not null ? OShapeInfo.Clip(shape) : shape;
 
         if (finalShape.Lines.Count == 0)
             return;
 
         List<OVector2<float>> polygon = ShapeToPoints(finalShape);
 
-        if (shape.MaskType == OShapeInfo.OMaskType.Negate)
+        if (shape.Negative is not null)
         {
-            if (shape.Mask is null)
-                return;
-            
             List<OVector2<float>> originalPolygon = GetPolygonFromLines(shape.Lines);
-            List<OVector2<float>> maskPolygon = GetPolygonFromLines(shape.Mask.Lines);
+            List<OVector2<float>> maskPolygon = GetPolygonFromLines(shape.Negative.Lines);
             
             FillNegatedPolygon(originalPolygon, maskPolygon, finalShape.Color);
         }
@@ -446,20 +443,20 @@ public interface IORenderer
         return set.ToList();
     }
 
-    private void FillNegatedPolygon(List<OVector2<float>> subject, List<OVector2<float>> mask, OColor color)
+    private void FillNegatedPolygon(List<OVector2<float>> subject, List<OVector2<float>> negative, OColor color)
     {
-        if (subject.Count < 3 || mask.Count < 3)
+        if (subject.Count < 3 || negative.Count < 3)
             return;
 
-        float minX = Math.Min(subject.Min(v => v.X), mask.Min(v => v.X));
-        float maxX = Math.Max(subject.Max(v => v.X), mask.Max(v => v.X));
-        float minY = Math.Min(subject.Min(v => v.Y), mask.Min(v => v.Y));
-        float maxY = Math.Max(subject.Max(v => v.Y), mask.Max(v => v.Y));
+        float minX = Math.Min(subject.Min((OVector2<float> vector) => vector.X), negative.Min((OVector2<float> vector) => vector.X));
+        float maxX = Math.Max(subject.Max((OVector2<float> vector) => vector.X), negative.Max((OVector2<float> vector) => vector.X));
+        float minY = Math.Min(subject.Min((OVector2<float> vector) => vector.Y), negative.Min((OVector2<float> vector) => vector.Y));
+        float maxY = Math.Max(subject.Max((OVector2<float> vector) => vector.Y), negative.Max((OVector2<float> vector) => vector.Y));
 
         for (int y = (int)minY; y <= (int)maxY; y++)
         {
-            List<float> subjectIntersections = new();
-            List<float> maskIntersections = new();
+            List<float> subjectIntersections = new List<float>();
+            List<float> negativeIntersections = new List<float>();
 
             for (int i = 0; i < subject.Count; i++)
             {
@@ -475,33 +472,32 @@ public interface IORenderer
                 }
             }
 
-            for (int i = 0; i < mask.Count; i++)
+            for (int i = 0; i < negative.Count; i++)
             {
-                OVector2<float> a = mask[i];
-                OVector2<float> b = mask[(i + 1) % mask.Count];
+                OVector2<float> a = negative[i];
+                OVector2<float> b = negative[(i + 1) % negative.Count];
 
                 if ((y >= a.Y && y < b.Y) || (y >= b.Y && y < a.Y))
                 {
                     float t = (y - a.Y) / (b.Y - a.Y);
                     float x = a.X + t * (b.X - a.X);
                     
-                    maskIntersections.Add(x);
+                    negativeIntersections.Add(x);
                 }
             }
 
             subjectIntersections.Sort();
-            maskIntersections.Sort();
+            negativeIntersections.Sort();
             
-            List<float> finalIntersections = new();
-            
+            List<float> finalIntersections = new List<float>();
             int si = 0, mi = 0;
             bool insideSubject = false;
             bool insideMask = false;
             
-            while (si < subjectIntersections.Count || mi < maskIntersections.Count)
+            while (si < subjectIntersections.Count || mi < negativeIntersections.Count)
             {
                 float nextSubject = si < subjectIntersections.Count ? subjectIntersections[si] : float.MaxValue;
-                float nextMask = mi < maskIntersections.Count ? maskIntersections[mi] : float.MaxValue;
+                float nextMask = mi < negativeIntersections.Count ? negativeIntersections[mi] : float.MaxValue;
                 
                 if (nextSubject <= nextMask)
                 {
@@ -538,8 +534,8 @@ public interface IORenderer
         if (vertices.Count < 3)
             return;
 
-        float minY = vertices.Min(v => v.Y);
-        float maxY = vertices.Max(v => v.Y);
+        float minY = vertices.Min((OVector2<float> vector) => vector.Y);
+        float maxY = vertices.Max((OVector2<float> vector) => vector.Y);
 
         for (int y = (int)minY; y <= (int)maxY; y++)
         {

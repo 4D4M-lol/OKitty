@@ -312,14 +312,6 @@ public static class OkInstance
 
     public record OShapeInfo
     {
-        // Enums
-        
-        public enum OMaskType
-        {
-            Clip,
-            Negate
-        }
-        
         // Static Properties
 
         public static OShapeInfo Empty => new OShapeInfo() { Lines = new List<OLineInfo>() };
@@ -328,7 +320,7 @@ public static class OkInstance
 
         public required List<OLineInfo> Lines { get; init; }
         public OShapeInfo? Mask { get; init; } = null;
-        public OMaskType MaskType { get; init; } = OMaskType.Clip;
+        public OShapeInfo? Negative { get; init; } = null;
         public OColor Color { get; init; } = OColor.Black;
         public int Layer { get; init; } = 0;
 
@@ -346,7 +338,7 @@ public static class OkInstance
         
         public static OShapeInfo Clip(OShapeInfo info)
         {
-            if (info.Mask == null || info.MaskType != OMaskType.Clip)
+            if (info.Mask == null)
                 return info;
 
             List<OVector2<float>> vertices = EnsureCcw(GetPolygonFromLines(info.Lines));
