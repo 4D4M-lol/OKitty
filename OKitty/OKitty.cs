@@ -352,9 +352,6 @@ public interface IORenderer
         }
         else
             FillPolygon(polygon, finalShape.Color);
-        
-        foreach (OLineInfo line in finalShape.Lines)
-            RenderLine(line);
     }
     
     public void RenderShapes(ICollection<OShapeInfo> shapes)
@@ -375,7 +372,6 @@ public interface IORenderer
         List<OShapeInfo> sortedShapes = drawing.Shapes.OrderBy((OShapeInfo shape) => shape.Layer).ToList();
 
         RenderShapes(sortedShapes);
-        
     }
 
     public void RenderDrawings(ICollection<ODrawingInfo> drawings)
@@ -442,49 +438,50 @@ public interface IORenderer
 
         return set.ToList();
     }
+    
+    private List<float> GetIntersections(List<OVector2<float>> vertices, int y)
+    {
+        List<float> intersections = new List<float>();
+        const float epsilon = 0.0001f;
+        
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            OVector2<float> a = vertices[i];
+            OVector2<float> b = vertices[(i + 1) % vertices.Count];
+
+            if (MathF.Abs(a.Y - b.Y) < epsilon)
+                continue;
+
+            float yFloat = y + 0.5f;
+            
+            if ((yFloat >= a.Y && yFloat < b.Y) || (yFloat >= b.Y && yFloat < a.Y))
+            {
+                float t = (yFloat - a.Y) / (b.Y - a.Y);
+                float x = a.X + t * (b.X - a.X);
+                
+                intersections.Add(x);
+            }
+        }
+        
+        return intersections;
+    }
 
     private void FillNegatedPolygon(List<OVector2<float>> subject, List<OVector2<float>> negative, OColor color)
     {
         if (subject.Count < 3 || negative.Count < 3)
             return;
 
-        float minX = Math.Min(subject.Min((OVector2<float> vector) => vector.X), negative.Min((OVector2<float> vector) => vector.X));
-        float maxX = Math.Max(subject.Max((OVector2<float> vector) => vector.X), negative.Max((OVector2<float> vector) => vector.X));
+        const float epsilon = 0.0001f;
+        
         float minY = Math.Min(subject.Min((OVector2<float> vector) => vector.Y), negative.Min((OVector2<float> vector) => vector.Y));
         float maxY = Math.Max(subject.Max((OVector2<float> vector) => vector.Y), negative.Max((OVector2<float> vector) => vector.Y));
+        int startY = (int)MathF.Floor(minY);
+        int endY = (int)MathF.Ceiling(maxY);
 
-        for (int y = (int)minY; y <= (int)maxY; y++)
+        for (int y = startY; y <= endY; y++)
         {
-            List<float> subjectIntersections = new List<float>();
-            List<float> negativeIntersections = new List<float>();
-
-            for (int i = 0; i < subject.Count; i++)
-            {
-                OVector2<float> a = subject[i];
-                OVector2<float> b = subject[(i + 1) % subject.Count];
-
-                if ((y >= a.Y && y < b.Y) || (y >= b.Y && y < a.Y))
-                {
-                    float t = (y - a.Y) / (b.Y - a.Y);
-                    float x = a.X + t * (b.X - a.X);
-                    
-                    subjectIntersections.Add(x);
-                }
-            }
-
-            for (int i = 0; i < negative.Count; i++)
-            {
-                OVector2<float> a = negative[i];
-                OVector2<float> b = negative[(i + 1) % negative.Count];
-
-                if ((y >= a.Y && y < b.Y) || (y >= b.Y && y < a.Y))
-                {
-                    float t = (y - a.Y) / (b.Y - a.Y);
-                    float x = a.X + t * (b.X - a.X);
-                    
-                    negativeIntersections.Add(x);
-                }
-            }
+            List<float> subjectIntersections = GetIntersections(subject, y);
+            List<float> negativeIntersections = GetIntersections(negative, y);
 
             subjectIntersections.Sort();
             negativeIntersections.Sort();
@@ -499,7 +496,7 @@ public interface IORenderer
                 float nextSubject = si < subjectIntersections.Count ? subjectIntersections[si] : float.MaxValue;
                 float nextMask = mi < negativeIntersections.Count ? negativeIntersections[mi] : float.MaxValue;
                 
-                if (nextSubject <= nextMask)
+                if (nextSubject <= nextMask + epsilon)
                 {
                     insideSubject = !insideSubject;
                     
@@ -524,7 +521,10 @@ public interface IORenderer
                 float xStart = finalIntersections[i];
                 float xEnd = finalIntersections[i + 1];
                 
-                RenderLine(new OVector2<float>(xStart, y), new OVector2<float>(xEnd, y), color);
+                if (xEnd > xStart + epsilon)
+                {
+                    RenderLine(new OVector2<float>(xStart, y), new OVector2<float>(xEnd, y), color);
+                }
             }
         }
     }
@@ -534,39 +534,53 @@ public interface IORenderer
         if (vertices.Count < 3)
             return;
 
+        const float epsilon = 0.0001f;
         float minY = vertices.Min((OVector2<float> vector) => vector.Y);
         float maxY = vertices.Max((OVector2<float> vector) => vector.Y);
+        int startY = (int)MathF.Floor(minY);
+        int endY = (int)MathF.Ceiling(maxY);
 
-        for (int y = (int)minY; y <= (int)maxY; y++)
+        for (int y = startY; y <= endY; y++)
         {
-            List<float> intersections = new();
+            List<float> intersections = new List<float>();
 
             for (int i = 0; i < vertices.Count; i++)
             {
                 OVector2<float> a = vertices[i];
                 OVector2<float> b = vertices[(i + 1) % vertices.Count];
 
-                if ((y >= a.Y && y < b.Y) || (y >= b.Y && y < a.Y))
+                if (MathF.Abs(a.Y - b.Y) < epsilon)
+                    continue;
+
+                float yFloat = y + 0.5f;
+                
+                if ((yFloat >= a.Y && yFloat < b.Y) || (yFloat >= b.Y && yFloat < a.Y))
                 {
-                    float t = (y - a.Y) / (b.Y - a.Y);
+                    float t = (yFloat - a.Y) / (b.Y - a.Y);
                     float x = a.X + t * (b.X - a.X);
-                    
+                
                     intersections.Add(x);
                 }
             }
 
             intersections.Sort();
 
-            for (int i = 0; i < intersections.Count - 1; i += 2)
+            for (int i = 0; i < intersections.Count; i += 2)
             {
+                if (i + 1 >= intersections.Count)
+                    break;
+                
                 float xStart = intersections[i];
                 float xEnd = intersections[i + 1];
-
-                RenderLine(
-                    new OVector2<float>(xStart, y),
-                    new OVector2<float>(xEnd, y),
-                    color
-                );
+            
+                if (xEnd > xStart + epsilon)
+                {
+                    RenderLine(
+                        new OVector2<float>(xStart, y),
+                        new OVector2<float>(xEnd, y),
+                        color
+                    );
+                }
             }
         }
     }

@@ -702,6 +702,7 @@ public static class OkInterface
                             Lines = clipped.Lines,
                             Color = clipped.Color,
                             Mask = Clip ? window.SafeArea : null,
+                            Negative = clipped.Negative,
                             Layer = clipped.Layer
                         });
                     }
@@ -1113,7 +1114,9 @@ public static class OkInterface
             foreach (IOInstance child in _children)
                 RunModifierPipeline<IOInstance, IOInstance>(modifiers, IOModifier.OModifierCallTime.LayoutChildren, child);
 
-            OShapeInfo baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, BackgroundColor);
+            byte alpha = (byte)(BackgroundColor.Argb.Alpha * BackgroundOpacity);
+            OColor backgroundColor = OColor.FromArgb(alpha, BackgroundColor.Argb.Red, BackgroundColor.Argb.Green, BackgroundColor.Argb.Blue);
+            OShapeInfo baseFrame = OShapes.Rectangle(_absoluteSize, _absolutePosition, _rotation, Layer, backgroundColor);
             ODrawingInfo baseDrawing = ODrawingInfo.Empty;
 
             baseDrawing.Shapes.Add(baseFrame);
@@ -1163,6 +1166,7 @@ public static class OkInterface
                         Lines = clipped.Lines,
                         Color = clipped.Color,
                         Mask = Clip ? baseFrame : null,
+                        Negative = clipped.Negative,
                         Layer = clipped.Layer + Layer
                     });
                 }
@@ -1173,8 +1177,32 @@ public static class OkInterface
             return renderInfo;
         }
         
-        private TReturn? RunModifierPipeline<TReturn, TParams>(IOModifier[] modifiers, IOModifier.OModifierCallTime callTime, TParams parameters)
+        private TReturn RunModifierPipeline<TReturn, TParams>(IOModifier[] modifiers, IOModifier.OModifierCallTime callTime, TParams parameters)
         {
+            if (typeof(TReturn) == typeof(TParams))
+            {
+                object? current = parameters;
+                
+                foreach (IOModifier modifier in modifiers)
+                {
+                    if (!modifier.Active || !modifier.CallTime.HasFlag(callTime))
+                        continue;
+
+                    if (!modifier.CanProcess<TReturn, TParams>())
+                        continue;
+
+                    TReturn? result = modifier.Process<TReturn, TParams>(callTime, (TParams)current!);
+
+                    if (result is not null)
+                        current = result;
+                }
+
+                if (current is TReturn returnValue)
+                    return returnValue;
+                
+                throw new InvalidCastException($"Cannot convert {current?.GetType().Name ?? "null"} to {typeof(TReturn).Name}");
+            }
+            
             foreach (IOModifier modifier in modifiers)
             {
                 if (!modifier.Active || !modifier.CallTime.HasFlag(callTime))
@@ -1183,13 +1211,17 @@ public static class OkInterface
                 if (!modifier.CanProcess<TReturn, TParams>())
                     continue;
 
-                TReturn? result = modifier.Process<TReturn, TParams>(callTime, parameters);
-
-                if (result is not null)
-                    return result;
+                _ = modifier.Process<TReturn, TParams>(callTime, parameters);
             }
 
-            return default;
+            if (typeof(TParams) == typeof(ValueTuple<ODrawingInfo, OShapeInfo>) && typeof(TReturn) == typeof(ODrawingInfo))
+            {
+                ValueTuple<ODrawingInfo, OShapeInfo> tuple = (ValueTuple<ODrawingInfo, OShapeInfo>)(object)parameters;
+                
+                return (TReturn)(object)tuple.Item1;
+            }
+            
+            throw new InvalidOperationException($"Unsupported modifier pipeline type combination: {typeof(TParams).Name} -> {typeof(TReturn).Name}");
         }
 
         private void ApplyAutoSize(List<ODrawingInfo> childDrawings, ref OShapeInfo baseFrame)

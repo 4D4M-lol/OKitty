@@ -414,6 +414,7 @@ public static class OkInstance
             return new OShapeInfo()
             {
                 Lines = newLines,
+                Negative = info.Negative,
                 Color = info.Color,
                 Layer = info.Layer
             };
