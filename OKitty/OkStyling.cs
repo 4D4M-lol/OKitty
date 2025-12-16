@@ -1027,8 +1027,9 @@ public static class OkStyling
         public OLayoutVector<float, float> RightThickness { get; set; } = new OLayoutVector<float, float>(0, 8);
         public OLayoutVector<float, float> BottomThickness { get; set; } = new OLayoutVector<float, float>(0, 8);
         public OLayoutVector<float, float> LeftThickness { get; set; } = new OLayoutVector<float, float>(0, 8);
-        public OLayoutVector2<float, float> Offset { get; set; } = OLayoutVector2<float, float>.Zero;
-        public OBorderPlacement Placement { get; set; } = OBorderPlacement.Outer; // Default to Outer
+        public OVector2<float> SizeOffset { get; set; } = OVector2<float>.Zero;
+        public OVector2<float> PositionOffset { get; set; } = OVector2<float>.Zero;
+        public OBorderPlacement Placement { get; set; } = OBorderPlacement.Outer;
 
         public IOPrototype? Parent
         {
@@ -1161,28 +1162,28 @@ public static class OkStyling
             bottomThickness = MathF.Min(bottomThickness, max);
             leftThickness = MathF.Min(leftThickness, max);
             
-            OVector2<float> offset = new OVector2<float>((gui.AbsoluteSize.X * Offset.Scale.X) + Offset.Offset.X, (gui.AbsoluteSize.Y * Offset.Scale.Y) + Offset.Offset.Y);
-            OVector2<float> borderSize = OVector2<float>.Zero;
-            OVector2<float> borderPosition = OVector2<float>.Zero;
+            OVector2<float> borderSize = SizeOffset;
+            OVector2<float> borderPosition = PositionOffset;
             OShapeInfo? negativeShape = null;
 
             if (Placement == OBorderPlacement.Outer)
             {
-                borderSize = new OVector2<float>(gui.AbsoluteSize.X + leftThickness + rightThickness, gui.AbsoluteSize.Y + topThickness + bottomThickness);
-                borderPosition = new OVector2<float>(gui.AbsolutePosition.X - leftThickness, gui.AbsolutePosition.Y - topThickness) + offset;
-                negativeShape = shape;
+                borderSize += new OVector2<float>(gui.AbsoluteSize.X + leftThickness + rightThickness, gui.AbsoluteSize.Y + topThickness + bottomThickness);
+                borderPosition += new OVector2<float>(gui.AbsolutePosition.X - leftThickness, gui.AbsolutePosition.Y - topThickness);
+
+                negativeShape = OShapes.RoundedRectangle(gui.AbsoluteSize + SizeOffset, gui.AbsolutePosition + PositionOffset, gui.Rotation, shape.Layer + 1, radius, OColor.Transparent, Smoothness, shape.Mask);
             }
             else
             {
                 if (Placement == OBorderPlacement.Center)
                 {
-                    borderSize = new OVector2<float>(gui.AbsoluteSize.X + (leftThickness + rightThickness) / 2f, gui.AbsoluteSize.Y + (topThickness + bottomThickness) / 2f);
-                    borderPosition = new OVector2<float>(gui.AbsolutePosition.X - leftThickness / 2f, gui.AbsolutePosition.Y - topThickness / 2f) + offset;
+                    borderSize += new OVector2<float>(gui.AbsoluteSize.X + (leftThickness + rightThickness) / 2f, gui.AbsoluteSize.Y + (topThickness + bottomThickness) / 2f);
+                    borderPosition += new OVector2<float>(gui.AbsolutePosition.X - leftThickness / 2f, gui.AbsolutePosition.Y - topThickness / 2f);
                 }
                 else
                 {
-                    borderSize = gui.AbsoluteSize;
-                    borderPosition = gui.AbsolutePosition + offset;
+                    borderSize += gui.AbsoluteSize;
+                    borderPosition += gui.AbsolutePosition;
                 }
                 
                 float shrinkL = Placement == OBorderPlacement.Center ? leftThickness / 2f : leftThickness;
@@ -1203,7 +1204,7 @@ public static class OkStyling
                         MathF.Max(0, bottomLeftRadius - shrinkL)
                     );
                         
-                    negativeShape = OShapes.RoundedRectangle(innerSize, innerPosition, gui.Rotation, shape.Layer, innerRadius, OColor.Transparent, Smoothness, shape.Mask);
+                    negativeShape = OShapes.RoundedRectangle(innerSize + SizeOffset, innerPosition + PositionOffset, gui.Rotation, shape.Layer + 1, innerRadius, OColor.Transparent, Smoothness, shape.Mask);
                 }
             }
 
