@@ -100,9 +100,9 @@ public static class OkSecurity
             {
                 OHashAlgorithm.Md5 => HashAlgorithmName.MD5,
                 OHashAlgorithm.Sha1 => HashAlgorithmName.SHA1,
-                OHashAlgorithm.Sha256 =>  HashAlgorithmName.SHA256,
-                OHashAlgorithm.Sha384 =>  HashAlgorithmName.SHA384,
-                OHashAlgorithm.Sha512 =>  HashAlgorithmName.SHA512
+                OHashAlgorithm.Sha256 => HashAlgorithmName.SHA256,
+                OHashAlgorithm.Sha384 => HashAlgorithmName.SHA384,
+                OHashAlgorithm.Sha512 => HashAlgorithmName.SHA512
             };
             int iterations = Convert.ToInt32(parts[1]);
             byte[] salt = Convert.FromBase64String(parts[2]);
@@ -123,16 +123,16 @@ public static class OkSecurity
                 return $"Password must be at least {MinLength} characters long.";
 
             if (RequireUppercase && !password.Any(char.IsUpper))
-                return $"Password must contain at least one uppercase letter.";
+                return "Password must contain at least one uppercase letter.";
 
             if (RequireLowercase && !password.Any(char.IsLower))
-                return $"Password must contain at least one lowercase letter.";
+                return "Password must contain at least one lowercase letter.";
 
             if (RequireNumbers && !password.Any(char.IsDigit))
-                return $"Password must contain at least one number.";
+                return "Password must contain at least one number.";
 
             if (RequireSpecialChars && password.All(char.IsLetterOrDigit))
-                return $"Password must contain at least one special character.";
+                return "Password must contain at least one special character.";
             
             return null;
         }
