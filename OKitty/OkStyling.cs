@@ -747,7 +747,7 @@ public static class OkStyling
         private OVector2<float> _minSize;
 
         public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Layout | IOModifier.OModifierCallTime.Behavior;
-        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
+        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.High;
         public OVector2<float> MaxSize = new OVector2<float>(float.MaxValue, float.MaxValue);
 
         public IOPrototype? Parent
@@ -880,7 +880,7 @@ public static class OkStyling
         private bool _active;
         
         public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Layout | IOModifier.OModifierCallTime.Behavior;
-        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
+        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.High;
         public float Ratio { get; set; } = 1;
 
         public IOPrototype? Parent
@@ -1002,23 +1002,26 @@ public static class OkStyling
     public class OBorderStyling : IOModifier
     {
         // Enums
-        
+
         public enum OBorderPlacement
         {
             Outer,
             Center,
             Inner
         }
-        
+
         // Properties and Fields
 
         private IOPrototype? _parent;
-        
+
         public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Render;
         public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
         public bool Active { get; set; } = true;
+        public bool ApplyPadding { get; set; } = true;
         public bool InheritRadius { get; set; } = true;
-        public int Smoothness { get; set; } = 128;
+        public bool FillEmpty { get; set; } = false;
+        public int Smoothness { get; set; } = 32;
+        public int Layer { get; set; } = -1;
         public OLayoutVector<float, float> TopLeftRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
         public OLayoutVector<float, float> TopRightRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
         public OLayoutVector<float, float> BottomRightRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
@@ -1030,6 +1033,10 @@ public static class OkStyling
         public OVector2<float> SizeOffset { get; set; } = OVector2<float>.Zero;
         public OVector2<float> PositionOffset { get; set; } = OVector2<float>.Zero;
         public OBorderPlacement Placement { get; set; } = OBorderPlacement.Outer;
+        public OColor TopColor { get; set; } = OColor.Black;
+        public OColor RightColor { get; set; } = OColor.Black;
+        public OColor BottomColor { get; set; } = OColor.Black;
+        public OColor LeftColor { get; set; } = OColor.Black;
 
         public IOPrototype? Parent
         {
@@ -1054,7 +1061,7 @@ public static class OkStyling
             }
         }
 
-        public OLayoutVector<float, float> Radius
+        public OLayoutVector<float, float> Radii
         {
             set
             {
@@ -1065,7 +1072,7 @@ public static class OkStyling
             }
         }
 
-        public OLayoutVector<float, float> Thickness
+        public OLayoutVector<float, float> Thicknesses
         {
             set
             {
@@ -1073,6 +1080,17 @@ public static class OkStyling
                 RightThickness = value;
                 BottomThickness = value;
                 LeftThickness = value;
+            }
+        }
+
+        public OColor Color
+        {
+            set
+            {
+                TopColor = value;
+                RightColor = value;
+                BottomColor = value;
+                LeftColor = value;
             }
         }
 
@@ -1104,130 +1122,180 @@ public static class OkStyling
             if (_parent is not IOInterface gui)
                 return CastBack<TReturn, TParams>(drawing, parameters);
             
-            OCornerStyling? cornerStyling = _parent.GetModifier<OCornerStyling>();
-
             ReadOnlyCollection<OVector2<float>> points = shape.GetPoints();
-            bool rounded = cornerStyling is not null && cornerStyling.Active;
 
-            if (!rounded)
+            if (shape.Lines.Count != 4 || points.Count != 4)
+                return CastBack<TReturn, TParams>(drawing, parameters);
+            
+            for (int i = 0; i < 4; i++)
             {
-                if ((shape.Lines.Count != 4 || points.Count != 4))
-                    return CastBack<TReturn, TParams>(drawing, parameters);
+                OVector2<float> current = points[i];
+                OVector2<float> prev = points[(i + 3) % 4];
+                OVector2<float> next = points[(i + 1) % 4];
+                OVector2<float> v1 = prev - current;
+                OVector2<float> v2 = next - current;
+                float dot = OVector2<float>.Dot(v1, v2);
+                float det = v1.X * v2.Y - v1.Y * v2.X;
+                float between = MathF.Atan2(det, dot) * (180f / MathF.PI);
+                float angle = MathF.Abs(between);
 
-                for (int i = 0; i < 4; i++)
-                {
-                    OVector2<float> current = points[i];
-                    OVector2<float> prev = points[(i + 3) % 4];
-                    OVector2<float> next = points[(i + 1) % 4];
-                    OVector2<float> v1 = prev - current;
-                    OVector2<float> v2 = next - current;
-                    float dot = OVector2<float>.Dot(v1, v2);
-                    float det = v1.X * v2.Y - v1.Y * v2.X;
-                    float between = MathF.Atan2(det, dot) * (180f / MathF.PI);
-                    float angle = MathF.Abs(between);
-
-                    if (MathF.Abs(angle - 90f) > 5f)
-                        return (TReturn)(object)drawing;
-                }
-            }
-
-            if (InheritRadius && cornerStyling is not null)
-            {
-                TopLeftRadius = cornerStyling.TopLeftRadius;
-                TopRightRadius = cornerStyling.TopRightRadius;
-                BottomRightRadius = cornerStyling.BottomRightRadius;
-                BottomLeftRadius = cornerStyling.BottomLeftRadius;
+                if (MathF.Abs(angle - 90f) > 5f)
+                    return (TReturn)(object)drawing;
             }
             
+            float leftThickness = gui.AbsoluteSize.X * LeftThickness.Scale + LeftThickness.Offset;
+            float topThickness = gui.AbsoluteSize.Y * TopThickness.Scale + TopThickness.Offset;
+            float rightThickness = gui.AbsoluteSize.X * RightThickness.Scale + RightThickness.Offset;
+            float bottomThickness = gui.AbsoluteSize.Y * BottomThickness.Scale + BottomThickness.Offset;
+            (float topLeft, float topRight, float bottomRight, float bottomLeft) radii = (0, 0, 0, 0);
             float min = MathF.Min(gui.AbsoluteSize.X, gui.AbsoluteSize.Y);
             float max = min / 2;
-            float topLeftRadius = (min * TopLeftRadius.Scale) + TopLeftRadius.Offset;
-            float topRightRadius = (min * TopRightRadius.Scale) + TopRightRadius.Offset;
-            float bottomRightRadius = (min * BottomRightRadius.Scale) + BottomRightRadius.Offset;
-            float bottomLeftRadius = (min * BottomLeftRadius.Scale) + BottomLeftRadius.Offset;
+            float topLeftPadding = ApplyPadding ? Math.Max(leftThickness, topThickness) : 0;
+            float topRightPadding = ApplyPadding ? Math.Max(topThickness, rightThickness) : 0;
+            float bottomRightPadding = ApplyPadding ? Math.Max(rightThickness, bottomThickness) : 0;
+            float bottomLeftPadding = ApplyPadding ? Math.Max(bottomThickness, leftThickness) : 0;
 
-            topLeftRadius = MathF.Min(topLeftRadius, max);
-            topRightRadius = MathF.Min(topRightRadius, max);
-            bottomRightRadius = MathF.Min(bottomRightRadius, max);
-            bottomLeftRadius = MathF.Min(bottomLeftRadius, max);
-
-            (float topLeft, float topRight, float bottomRight, float bottomLeft) radius = (topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
-            float topThickness = (min * TopThickness.Scale) + TopThickness.Offset;
-            float rightThickness = (min * RightThickness.Scale) + RightThickness.Offset;
-            float bottomThickness = (min * BottomThickness.Scale) + BottomThickness.Offset;
-            float leftThickness = (min * LeftThickness.Scale) + LeftThickness.Offset;
-
-            topThickness = MathF.Min(topThickness, max);
-            rightThickness = MathF.Min(rightThickness, max);
-            bottomThickness = MathF.Min(bottomThickness, max);
-            leftThickness = MathF.Min(leftThickness, max);
-            
-            OVector2<float> borderSize = SizeOffset;
-            OVector2<float> borderPosition = PositionOffset;
-            OShapeInfo? negativeShape = null;
-
-            if (Placement == OBorderPlacement.Outer)
+            if (InheritRadius && gui.GetModifier<OCornerStyling>() is OCornerStyling cornerStyling)
             {
-                borderSize += new OVector2<float>(gui.AbsoluteSize.X + leftThickness + rightThickness, gui.AbsoluteSize.Y + topThickness + bottomThickness);
-                borderPosition += new OVector2<float>(gui.AbsolutePosition.X - leftThickness, gui.AbsolutePosition.Y - topThickness);
+                float topLeftRadius = min * cornerStyling.TopLeftRadius.Scale + cornerStyling.TopLeftRadius.Offset + topLeftPadding;
+                float topRightRadius = min * cornerStyling.TopRightRadius.Scale + cornerStyling.TopRightRadius.Offset + topRightPadding;
+                float bottomRightRadius = min * cornerStyling.BottomRightRadius.Scale + cornerStyling.BottomRightRadius.Offset + bottomRightPadding;
+                float bottomLeftRadius = min * cornerStyling.BottomLeftRadius.Scale + cornerStyling.BottomLeftRadius.Offset + bottomLeftPadding;
 
-                negativeShape = OShapes.RoundedRectangle(gui.AbsoluteSize + SizeOffset, gui.AbsolutePosition + PositionOffset, gui.Rotation, shape.Layer + 1, radius, OColor.Transparent, Smoothness, shape.Mask);
+                radii = (topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
             }
             else
             {
-                if (Placement == OBorderPlacement.Center)
-                {
-                    borderSize += new OVector2<float>(gui.AbsoluteSize.X + (leftThickness + rightThickness) / 2f, gui.AbsoluteSize.Y + (topThickness + bottomThickness) / 2f);
-                    borderPosition += new OVector2<float>(gui.AbsolutePosition.X - leftThickness / 2f, gui.AbsolutePosition.Y - topThickness / 2f);
-                }
-                else
-                {
-                    borderSize += gui.AbsoluteSize;
-                    borderPosition += gui.AbsolutePosition;
-                }
-                
-                float shrinkL = Placement == OBorderPlacement.Center ? leftThickness / 2f : leftThickness;
-                float shrinkR = Placement == OBorderPlacement.Center ? rightThickness / 2f : rightThickness;
-                float shrinkT = Placement == OBorderPlacement.Center ? topThickness / 2f : topThickness;
-                float shrinkB = Placement == OBorderPlacement.Center ? bottomThickness / 2f : bottomThickness;
-                float innerWidth = MathF.Max(0, gui.AbsoluteSize.X - shrinkL - shrinkR);
-                float innerHeight = MathF.Max(0, gui.AbsoluteSize.Y - shrinkT - shrinkB);
-                
-                if (innerWidth > 0 && innerHeight > 0)
-                {
-                    OVector2<float> innerSize = new OVector2<float>(innerWidth, innerHeight);
-                    OVector2<float> innerPosition = new OVector2<float>(gui.AbsolutePosition.X + shrinkL, gui.AbsolutePosition.Y + shrinkT);
-                    (float topLeft, float topRight, float bottomRight, float bottomLeft) innerRadius = (
-                        MathF.Max(0, topLeftRadius - shrinkL),
-                        MathF.Max(0, topRightRadius - shrinkR),
-                        MathF.Max(0, bottomRightRadius - shrinkR),
-                        MathF.Max(0, bottomLeftRadius - shrinkL)
-                    );
-                        
-                    negativeShape = OShapes.RoundedRectangle(innerSize + SizeOffset, innerPosition + PositionOffset, gui.Rotation, shape.Layer + 1, innerRadius, OColor.Transparent, Smoothness, shape.Mask);
-                }
+                float topLeftRadius = min * TopLeftRadius.Scale + TopLeftRadius.Offset + topLeftPadding;
+                float topRightRadius = min * TopRightRadius.Scale + TopRightRadius.Offset + topRightPadding;
+                float bottomRightRadius = min * BottomRightRadius.Scale + BottomRightRadius.Offset + bottomRightPadding;
+                float bottomLeftRadius = min * BottomLeftRadius.Scale + BottomLeftRadius.Offset + bottomLeftPadding;
+
+                radii = (topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
             }
 
-            OShapeInfo border = OShapes.RoundedRectangle(borderSize, borderPosition, gui.Rotation, gui.Layer, radius, OColor.Black, Smoothness, shape.Mask, negativeShape);
-            
-            drawing.Shapes.Add(border);
+            radii = (Math.Min(radii.topLeft, max), Math.Min(radii.topRight, max), Math.Min(radii.bottomRight, max), Math.Min(radii.bottomLeft, max));
 
+            OShapeInfo negative = shape;
+
+            if ((SizeOffset != OVector2<float>.Zero || PositionOffset != OVector2<float>.Zero) && !FillEmpty)
+            {
+                negative = OShapes.RoundedRectangle(
+                    gui.AbsoluteSize + SizeOffset,gui.AbsolutePosition + PositionOffset, gui.Rotation, gui.Layer,
+                    (radii.topLeft - topLeftPadding, radii.topRight - topRightPadding,radii.bottomRight - bottomRightPadding, radii.bottomLeft - bottomLeftPadding), OColor.Transparent
+                );
+            }
+            
+            OVector2<float> borderSize = gui.AbsoluteSize + new OVector2<float>(leftThickness + rightThickness, topThickness + bottomThickness) + SizeOffset;
+            OVector2<float> borderPosition = gui.AbsolutePosition - new OVector2<float>(leftThickness, topThickness) + PositionOffset;
+            OShapeInfo border = OShapes.RoundedRectangle(
+                borderSize,
+                borderPosition,
+                gui.Rotation,
+                gui.Layer + Layer,
+                radii,
+                LeftColor,
+                Smoothness,
+                negative: negative
+            );
+            
+            if (LeftColor == TopColor && LeftColor == RightColor && LeftColor == BottomColor)
+                drawing.Shapes.Add(border);
+            else
+                CreateMultiColoredBorder(drawing, border, negative, borderSize, borderPosition, gui.Rotation);
+            
             return CastBack<TReturn, TParams>(drawing, parameters);
         }
 
+        private void CreateMultiColoredBorder(ODrawingInfo drawing, OShapeInfo border, OShapeInfo negative, OVector2<float> borderSize, OVector2<float> borderPosition, float rotation)
+        {
+            OVector2<float> borderCenter = borderPosition + borderSize / 2;
+            OVector2<float> topSize = new OVector2<float>(borderSize.X, borderSize.Y / 2);
+            OVector2<float> topLocalCenter = new OVector2<float>(borderCenter.X, borderCenter.Y - borderSize.Y / 4);
+            OVector2<float> topCenter = RotateAround(topLocalCenter, borderCenter, rotation);
+            OShapeInfo topBorder = OShapeInfo.Clip(
+                OShapes.Triangle(
+                    topSize,
+                    topCenter - topSize / 2,
+                    180 + rotation,
+                    border.Layer,
+                    OShapes.OTriangleType.Isosceles,
+                    TopColor,
+                    border,
+                    negative
+                )
+            );
+            OVector2<float> bottomSize = new OVector2<float>(borderSize.X, borderSize.Y / 2);
+            OVector2<float> bottomLocalCenter = new OVector2<float>(borderCenter.X, borderCenter.Y + borderSize.Y / 4);
+            OVector2<float> bottomCenter = RotateAround(bottomLocalCenter, borderCenter, rotation);
+            OShapeInfo bottomBorder = OShapeInfo.Clip(
+                OShapes.Triangle(
+                    bottomSize,
+                    bottomCenter - bottomSize / 2,
+                    0 + rotation,
+                    border.Layer,
+                    OShapes.OTriangleType.Isosceles,
+                    BottomColor,
+                    border,
+                    negative
+                )
+            );
+            OVector2<float> leftSize = new OVector2<float>(borderSize.Y, borderSize.X / 2);
+            OVector2<float> leftLocalCenter = new OVector2<float>(borderCenter.X - borderSize.X / 4, borderCenter.Y);
+            OVector2<float> leftCenter = RotateAround(leftLocalCenter, borderCenter, rotation);
+            OShapeInfo leftBorder = OShapeInfo.Clip(
+                OShapes.Triangle(
+                    leftSize,
+                    leftCenter - leftSize / 2,
+                    90 + rotation,
+                    border.Layer,
+                    OShapes.OTriangleType.Isosceles,
+                    LeftColor,
+                    border,
+                    negative
+                )
+            );
+            OVector2<float> rightSize = new OVector2<float>(borderSize.Y, borderSize.X / 2);
+            OVector2<float> rightLocalCenter = new OVector2<float>(borderCenter.X + borderSize.X / 4, borderCenter.Y);
+            OVector2<float> rightCenter = RotateAround(rightLocalCenter, borderCenter, rotation);
+            OShapeInfo rightBorder = OShapeInfo.Clip(
+                OShapes.Triangle(
+                    rightSize,
+                    rightCenter - rightSize / 2,
+                    -90 + rotation,
+                    border.Layer,
+                    OShapes.OTriangleType.Isosceles,
+                    RightColor,
+                    border,
+                    negative
+                )
+            );
+
+            drawing.Shapes.Add(leftBorder);
+            drawing.Shapes.Add(topBorder);
+            drawing.Shapes.Add(rightBorder);
+            drawing.Shapes.Add(bottomBorder);
+        }
+
+        private static OVector2<float> RotateAround(OVector2<float> point, OVector2<float> pivot, float degrees)
+        {
+            float cos = MathF.Cos(degrees * MathF.PI / 180f);
+            float sin = MathF.Sin(degrees * MathF.PI / 180f);
+            float dx = point.X - pivot.X;
+            float dy = point.Y - pivot.Y;
+            
+            return new OVector2<float>(
+                pivot.X + dx * cos - dy * sin,
+                pivot.Y + dx * sin + dy * cos
+            );
+        }
+        
         private static TReturn? CastBack<TReturn, TParams>(ODrawingInfo outputDrawing, TParams original)
         {
             if (typeof(TReturn) == typeof(ODrawingInfo))
                 return (TReturn)(object)outputDrawing;
 
             return (TReturn)(object)original!;
-        }
-        
-        // To String
-
-        public override string ToString()
-        {
-            return $"<OBorderStyling Active={Active} Placement={Placement}>";
         }
     }
 
@@ -1238,9 +1306,9 @@ public static class OkStyling
         private IOPrototype? _parent;
 
         public IOModifier.OModifierCallTime CallTime => IOModifier.OModifierCallTime.Render;
-        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Normal;
+        public IOModifier.OModifierPriority Priority => IOModifier.OModifierPriority.Low;
         public bool Active { get; set; } = true;
-        public int Smoothness { get; set; } = 128;
+        public int Smoothness { get; set; } = 32;
         public OLayoutVector<float, float> TopLeftRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
         public OLayoutVector<float, float> TopRightRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
         public OLayoutVector<float, float> BottomRightRadius { get; set; } = new OLayoutVector<float, float>(0, 8);
@@ -1269,7 +1337,7 @@ public static class OkStyling
             }
         }
 
-        public OLayoutVector<float, float> Radius
+        public OLayoutVector<float, float> Radii
         {
             set
             {
@@ -1331,18 +1399,18 @@ public static class OkStyling
 
             float min = MathF.Min(gui.AbsoluteSize.X, gui.AbsoluteSize.Y);
             float max = min / 2;
-            float topLeftRadius = (min * TopLeftRadius.Scale) + TopLeftRadius.Offset;
-            float topRightRadius = (min * TopRightRadius.Scale) + TopRightRadius.Offset;
-            float bottomRightRadius = (min * BottomRightRadius.Scale) + BottomRightRadius.Offset;
-            float bottomLeftRadius = (min * BottomLeftRadius.Scale) + BottomLeftRadius.Offset;
+            float topLeftRadius = min * TopLeftRadius.Scale + TopLeftRadius.Offset;
+            float topRightRadius = min * TopRightRadius.Scale + TopRightRadius.Offset;
+            float bottomRightRadius = min * BottomRightRadius.Scale + BottomRightRadius.Offset;
+            float bottomLeftRadius = min * BottomLeftRadius.Scale + BottomLeftRadius.Offset;
 
             topLeftRadius = MathF.Min(topLeftRadius, max);
             topRightRadius = MathF.Min(topRightRadius, max);
             bottomRightRadius = MathF.Min(bottomRightRadius, max);
             bottomLeftRadius = MathF.Min(bottomLeftRadius, max);
 
-            (float topLeft, float topRight, float bottomRight, float bottomLeft) radius = (topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
-            OShapeInfo rounded = OShapes.RoundedRectangle(gui.AbsoluteSize, gui.AbsolutePosition, gui.Rotation, shape.Layer, radius, shape.Color, Smoothness, shape.Mask);
+            (float topLeft, float topRight, float bottomRight, float bottomLeft) radii = (topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
+            OShapeInfo rounded = OShapes.RoundedRectangle(gui.AbsoluteSize, gui.AbsolutePosition, gui.Rotation, shape.Layer, radii, shape.Color, Smoothness, shape.Mask);
 
             shape.Lines.Clear();
             shape.Lines.AddRange(rounded.Lines);

@@ -99,7 +99,7 @@ public static class OkScript
             DateTime now = DateTime.Now;
             
             Console.ResetColor();
-            Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:00} => {value}");
         }
 
         public static void Inform(object value)
@@ -114,7 +114,7 @@ public static class OkScript
 
             Console.ForegroundColor = ConsoleColor.Blue;
             
-            Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.Write($"[i] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:00} => {value}");
             Console.ResetColor();
         }
 
@@ -130,7 +130,7 @@ public static class OkScript
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             
-            Console.Write($"[!] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.Write($"[!] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:00} => {value}");
             Console.ResetColor();
         }
 
@@ -146,7 +146,7 @@ public static class OkScript
 
             Console.ForegroundColor = ConsoleColor.Red;
             
-            Console.Write($"[!] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00} => {value}");
+            Console.Write($"[!] @ {now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:00} => {value}");
             Console.ResetColor();
         }
 

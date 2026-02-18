@@ -86,7 +86,7 @@ public static class Frame
         {
             Position = OLayoutVector2<float, float>.Zero, // offset-only positioning
             Size = new OLayoutVector2<float, float>(new OVector2<float>(100, 100)), // absolute size
-            BackgroundColor = OColor.Green,
+            BackgroundColor = OColor.Lime,
             Layer = 3,
             Clip = false
         };

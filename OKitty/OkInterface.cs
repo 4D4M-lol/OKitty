@@ -227,17 +227,17 @@ public static class OkInterface
         }
         
         public static OShapeInfo RoundedRectangle(
-            OVector2<float> size, OVector2<float> position, float rotation, int layer,  (float topLeft, float topRight, float bottomRight, float bottomLeft) radius, OColor color,
+            OVector2<float> size, OVector2<float> position, float rotation, int layer,  (float topLeft, float topRight, float bottomRight, float bottomLeft) radii, OColor color,
             int smoothness = 24, OShapeInfo? mask = null, OShapeInfo? negative = null
         )
         {
             float width = size.X;
             float height = size.Y;
             float maxRadius = MathF.Min(width, height) / 2;
-            float tl = Math.Clamp(radius.topLeft, 0, maxRadius);
-            float tr = Math.Clamp(radius.topRight, 0, maxRadius);
-            float br = Math.Clamp(radius.bottomRight, 0, maxRadius);
-            float bl = Math.Clamp(radius.bottomLeft, 0, maxRadius);
+            float tl = Math.Clamp(radii.topLeft, 0, maxRadius);
+            float tr = Math.Clamp(radii.topRight, 0, maxRadius);
+            float br = Math.Clamp(radii.bottomRight, 0, maxRadius);
+            float bl = Math.Clamp(radii.bottomLeft, 0, maxRadius);
             List<OVector2<float>> points = new List<OVector2<float>>();
 
             if (tl > 0)
